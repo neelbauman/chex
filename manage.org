@@ -1,0 +1,87 @@
+-*- mode:org; -*-
+file://~/org/agenda.org
+
+* TDDの流れ
+1. 失敗するテストを書く（ほしい挙動をリストする）
+2. テストを実行して失敗することを確認
+3. テストを成功させる最低限の実装を書く（クソコードでもいいからテストを通過させる）
+4. テストを実行して成功することを確認
+5. テストがオチないようにしながら実装をリファクタリングする
+
+** はじめから複雑な世界を想像するよりは、まずはとても単純な世界を仮定して始めて、うまく行かなかったら複雑化させれたほうが良い。
+*** どうやって複雑化させるのが良いのかはまた別の話。
+** ゼロからいきなり最良を実現するよりは、そこそこのところから最良へ向かうほうがまだマシだ。
+
+* MINEWORKERの実装 [/]
+** TODO コア機能（MINER）のプロトタイピング（ローカルでの挙動） [0%]
+*** TOTEST [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]からHTMLを持ってこれる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 14:54]
+    :END:
+*** TOTEST スタート地点から指定した対象ドメインのすべてのページを辿ることができる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:26]
+    :END:
+*** TOTEST HTMLを保存できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:07]
+    :END:
+*** TOTEST HTMLからマークアップを削除して記事情報だけを抽出できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:08]
+    :END:
+*** TOTEST 記事情報を保存できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:09]
+    :END:
+*** TOTEST 記事情報からLaTeX記法を抽出できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:04]
+    :END:
+*** TOTEST LaTeX記法のみをまとめて保存できる
+    :LOGBOOK:
+    - State "TOTEST"     from "WAIT"       [2023-08-23 水 15:09]
+    :END:
+** TODO Webページ構造インデックス作成・表示機能（OFFICER） [0%]
+*** TOTEST 対象ドメインに存在するHTMLのページのインデックスを作成できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:23]
+    :END:
+*** TOTEST ページ間のリンクのテーブルを作れる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:25]
+    :END:
+*** TOTEST リンクテーブルをもとに、リンクグラフを作って表示できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:27]
+    :END:
+** TODO 外部ストレージへの保存 [0%]
+*** TOTEST S3へのログイン
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:13]
+    :END:
+*** TOTEST S3へのアップロード
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:11]
+    :END:
+*** TOTEST S3からのファイル取得
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:11]
+    :END:
+*** TOTEST 直接S3へソースを保存
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:12]
+    :END:
+** TODO デーモン化 [0%]
+*** TOTEST リモートサーバ上で稼働することを確認
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:15]
+    :END:
+*** TOTEST 更新指示で対象サイトを訪問してソースの更新をする
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:16]
+    :END:
+*** TOTEST 定期的に対象サイトを訪問してソースの更新をする
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-23 水 15:17]
+    :END:

@@ -1,4 +1,6 @@
 README OF CHEX -*- mode:org; -*-
+file://~/org/project.org
+file://~/org/agenda.org
 
 * CHEX（シェフ）
 蓄積されたナレッジに命を与える。
