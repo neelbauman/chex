@@ -17,14 +17,14 @@ import json, re, collections, urllib, hashlib
 
 class Crawler(object):
     """
-    Reconnaissance　Unit
-
-    domainを指定して初期化したら、そのドメインのindexを探す。
+    Survey Unit
     """
-
     def __init__(self, domain:str, *args, **kwargs):
         self._domain = domain
-        self.page_index = {}
+        self.page_index = set()
+
+    #def _hash_name(self, s:str):
+
 
     def _get_lp(self):
         """

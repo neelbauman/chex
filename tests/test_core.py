@@ -27,65 +27,52 @@ from src.crawler import Crawler
 import urllib, hashlib, json
 from typing import Dict
 
-@pytest.fixture
-def domain() -> str:
-    yield "https://math.jp"
-
-@pytest.fixture
-def target() -> str:
-    yield "/wiki/メインページ"
+domain = "https://math.jp"
+lp = "/wiki/メインページ"
+target = "/wiki/%E6%B8%AC%E5%BA%A6%E3%81%A8%E7%A9%8D%E5%88%861%EF%BC%9A%E6%B8%AC%E5%BA%A6%E8%AB%96%E3%81%AE%E5%9F%BA%E7%A4%8E%E7%94%A8%E8%AA%9E"
 
 
 class TestCrawler(object):
-    domain = "https://math.jp"
-    lp = "/wiki/メインページ"
-    target = "/wiki/%E6%B8%AC%E5%BA%A6%E3%81%A8%E7%A9%8D%E5%88%861%EF%BC%9A%E6%B8%AC%E5%BA%A6%E8%AB%96%E3%81%AE%E5%9F%BA%E7%A4%8E%E7%94%A8%E8%AA%9E"
 
-    def url_encode(self, url):
-        url = urllib.parse.quote(url, safe=":/")
-        return url
+    def url_encode(self, url:str):
+        encoded = urllib.parse.quote(url, safe=":/%")
+
+        return encoded
 
     def hash_name(self, url):
+        url = self.url_encode(url)
         name = hashlib.sha1(url.encode("utf-8")).hexdigest() + ".json"
         return name
 
+    def test_url_encode(self):
+        assert target == self.url_encode(target)
+
     def test_init(self):
-        crawler = Crawler(TestCrawler.domain)
-        assert crawler._domain == TestCrawler.domain
+        crawler = Crawler(domain)
+        assert crawler._domain == domain
 
     def test_get_lp(self):
-        crawler = Crawler(TestCrawler.domain)
-        domain = TestCrawler.domain
-        lp = TestCrawler.lp
-        
+        crawler = Crawler(domain)
         lp_url = crawler._get_lp()
+        assert lp_url == self.url_encode(domain+lp)
 
-        assert crawler._lp_url == self.url_encode(domain+lp)
-
-    def test_get(self):
-        crawler = Crawler(TestCrawler.domain)
-        res = crawler.get(TestCrawler.target)
+    def test_get_res(self):
+        crawler = Crawler(domain)
+        res = crawler.get_res(target)
         assert res.status_code == 200
 
     def test_load(self):
-        crawler = Crawler(TestCrawler.domain)
-        domain = TestCrawler.domain
-        target = TestCrawler.target
-
+        crawler = Crawler(domain)
         url = domain + target
         name = self.hash_name(url)
         
-        data = crawler.load(f"tmp/{name}")
-
+        data = crawler.load(f"../tmp/{name}")
+        print(f"\n\ntmp/{name}\n\n")
         assert data
 
     def test_make_soup(self):
-        crawler = Crawler(TestCrawler.domain)
-        domain = TestCrawler.domain
-        target = TestCrawler.target
-
-        res = crawler.get(target)
-        data = crawler.make_soup(res)
-
+        crawler = Crawler(domain)
+        res = crawler.get_res(target)
+        data = crawler.get_json(res)
         assert data["hrefs"]
 

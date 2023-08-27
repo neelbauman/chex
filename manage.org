@@ -30,7 +30,11 @@ file://~/org/agenda.org
 start
 
 partition "initialize" {
-:ドメインのindexを探す;
+:ドメインのデータディレクトリを探す;
+if (データディレクトリがある) then (yes)
+:indexをロードする;
+else (no)
+:ドメインのhash名でディレクトリを作成する;
 }
 
 if (indexがある) then (yes)
@@ -52,23 +56,73 @@ activate CRAWLER
 #+end_src
 
 * CRAWLERの実装 [0/4]
-** TODO コア機能（MINER）のプロトタイピング（ローカルでの挙動） [23%]
-*** TODO データ取得 [100%]
-**** GREEN Crawlerオブジェクトを作成できる
+** TODO コアとなるsurveyの実装（ローカルでの挙動） [23%]
+*** TODO Crawler初期化 [0%]
+**** TOTEST domainを渡して初期化
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:48]
+     :END:
+**** TOTEST domainのhash名でデータが存在しているかを確認する
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:48]
+     :END:
+**** TOTEST データが存在していればindexをロードしてデータとして保持する
     :LOGBOOK:
-    - State "GREEN"      from "TOTEST"     [2023-08-27 日 10:49]
-    - State "TOTEST"     from              [2023-08-27 日 10:48]
+    - State "TOTEST"     from              [2023-08-25 金 15:28]
     :END:
-**** GREEN 初期化が適切にできる
-    :LOGBOOK:
-    - State "GREEN"      from "TOTEST"     [2023-08-27 日 11:00]
-    - State "TOTEST"     from              [2023-08-27 日 10:48]
-    :END:
-**** GREEN [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]にRequestでアクセスできる
+**** TOTEST データが存在していなければディレクトリを作成し、空のindexを持つ
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:49]
+     :END:
+**** TOTEST footprintを空のリストで持つ
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:52]
+     :END:
+*** TODO データ取得 [14%]
+**** TOTEST indexがあればスタート位置をランダムにindexから選ぶ
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:53]
+     :END:
+**** TOTEST indexがなければdomainルートにアクセスしてリダイレクトされるページ（LP）から始める
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:54]
+     :END:
+**** GREEN [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]のtargetにRequestでgetを飛ばす
     :LOGBOOK:
     - State "GREEN"      from "TOTEST"     [2023-08-27 日 11:01]
     - State "TOTEST"     from              [2023-08-23 水 14:54]
     :END:
+**** TOTEST getが成功すればfootprintを更新、indexの情報を更新
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:57]
+     :END:
+**** TOTEST getに失敗すれば再度ページの選定をして別のページを選ぶ
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 07:02]
+     :END:
+**** TOTEST resからhrefsを取得し、indexのhrefsと差分が無いか調べる
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:59]
+     :END:
+**** TOTEST hrefsの中から特定のアルゴリズムにしたがって次のページを決める（最初は乱数）
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:59]
+     :END:
+*** TODO サイクル単位で情報を保存する [0%]
+**** TOTEST footprintが初期化規定に触れたか判定
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 07:06]
+     :END:
+***** スタート地点に戻ってきた。
+***** 一定以上の長さになった。
+**** TOTEST 触れていたらcycle.jsonに書き出してfootprintは初期化
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 07:07]
+     :END:
+**** TOTEST 触れていたらindexも上書き保存
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 07:08]
+     :END:
 *** TODO ターゲットページに過去に訪問したことがあるかを調べる [100%]
 **** GREEN ターゲットのデータファイルが存在するかどうかを確認する
      :LOGBOOK:
@@ -80,18 +134,7 @@ activate CRAWLER
     - State "GREEN"      from "TOTEST"     [2023-08-27 日 18:18]
     - State "TOTEST"     from              [2023-08-25 金 15:28]
     :END:
-*** TOTEST htmlに前回の訪問から更新が無いかをチェックしてeditedフラグを更新できる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-25 金 15:28]
-    :END:
-*** TOTEST latest, countを更新できる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-25 金 15:29]
-    :END:
-*** TOTEST すべてのhrefとその訪問回数の組をリストに抽出できる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-27 日 11:03]
-    :END:
+
 *** TOTEST HTMLをjsonに保存できる
     :LOGBOOK:
     - State "TOTEST"     from              [2023-08-23 水 15:07]
