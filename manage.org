@@ -15,10 +15,9 @@ file://~/org/agenda.org
 - どうやって複雑化させるのが良いのかはまた別の話。
 ** 格言２
 ゼロからいきなり最良を実現するよりは、最低限のものを最良へ向けて改良していくほうが簡単だ。
- 
-* オリジナル要素
-** Jupyter Lab でSKETCHを書きながら世界のことを眺めてテストの設計を考えることは良いことでは？
-** テストを Jupyter Lab で書いちゃってもいいしね。
+** オリジナル要素
+*** Jupyter Lab でSKETCHを書きながら世界のことを眺めてテストの設計を考えることは良いことでは？
+*** テストを Jupyter Lab で書いちゃってもいいしね。
 
 * 課題事項
 ** 数学記法の形態素解析
@@ -26,18 +25,59 @@ file://~/org/agenda.org
 ** LaTeXコマンドをパースするのは多分簡単
 ** 数学記法の形態素解析がうまく実装できなかったときの保険的代替案を考えておく。
 
-* MINEWORKERの実装 [/]
-** TODO コア機能（MINER）のプロトタイピング（ローカルでの挙動） [0%]
-*** TOTEST [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]にRequestでアクセスできる
+* CRAWLER
+#+begin_src plantuml :file static/img/crawler_activity.svg
+start
+
+partition "initialize" {
+:ドメインのindexを探す;
+}
+
+if (indexがある) then (yes)
+:indexをロードする;
+else (no)
+:LPへ飛ぶ;
+endif
+
+#+end_src
+
+#+RESULTS:
+[[file:static/img/crawler_activity.svg]]
+
+#+begin_src plantuml
+main -> CRAWLER: initialize
+activate CRAWLER
+
+
+#+end_src
+
+* CRAWLERの実装 [0/4]
+** TODO コア機能（MINER）のプロトタイピング（ローカルでの挙動） [23%]
+*** TODO データ取得 [100%]
+**** GREEN Crawlerオブジェクトを作成できる
     :LOGBOOK:
+    - State "GREEN"      from "TOTEST"     [2023-08-27 日 10:49]
+    - State "TOTEST"     from              [2023-08-27 日 10:48]
+    :END:
+**** GREEN 初期化が適切にできる
+    :LOGBOOK:
+    - State "GREEN"      from "TOTEST"     [2023-08-27 日 11:00]
+    - State "TOTEST"     from              [2023-08-27 日 10:48]
+    :END:
+**** GREEN [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]にRequestでアクセスできる
+    :LOGBOOK:
+    - State "GREEN"      from "TOTEST"     [2023-08-27 日 11:01]
     - State "TOTEST"     from              [2023-08-23 水 14:54]
     :END:
-*** TOTEST htmlデータを持ってこれる
+*** TODO ターゲットページに過去に訪問したことがあるかを調べる [100%]
+**** GREEN ターゲットのデータファイルが存在するかどうかを確認する
+     :LOGBOOK:
+     - State "GREEN"      from "TOTEST"     [2023-08-27 日 18:18]
+     - State "TOTEST"     from              [2023-08-27 日 11:05]
+     :END:
+**** GREEN 存在する場合、jsonを読み込む。存在しない場合、新規ファイルを作成する。
     :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-23 水 15:26]
-    :END:
-*** TOTEST ターゲットのURLと同じURLを持ったファイルから前回の情報を持ってこれる
-    :LOGBOOK:
+    - State "GREEN"      from "TOTEST"     [2023-08-27 日 18:18]
     - State "TOTEST"     from              [2023-08-25 金 15:28]
     :END:
 *** TOTEST htmlに前回の訪問から更新が無いかをチェックしてeditedフラグを更新できる
@@ -48,7 +88,11 @@ file://~/org/agenda.org
     :LOGBOOK:
     - State "TOTEST"     from              [2023-08-25 金 15:29]
     :END:
-*** TOTEST HTMLを保存できる
+*** TOTEST すべてのhrefとその訪問回数の組をリストに抽出できる
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-08-27 日 11:03]
+    :END:
+*** TOTEST HTMLをjsonに保存できる
     :LOGBOOK:
     - State "TOTEST"     from              [2023-08-23 水 15:07]
     :END:
@@ -111,3 +155,4 @@ file://~/org/agenda.org
     :LOGBOOK:
     - State "TOTEST"     from              [2023-08-23 水 15:17]
     :END:
+* PARSERの実装
