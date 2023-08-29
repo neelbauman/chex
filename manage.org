@@ -25,7 +25,19 @@ file://~/org/agenda.org
 ** LaTeXコマンドをパースするのは多分簡単
 ** 数学記法の形態素解析がうまく実装できなかったときの保険的代替案を考えておく。
 
-* CRAWLER
+* CRAWLERの構成
+** Crawlerクラス
+- 対象ドメインのindexのロードと新規作成
+- indexからSiteDataオブジェクトの作成
+- 対象ドメインのページへのリクエスト
+  - 詳細はSiteオブジェクトに任せる
+- indexの更新
+- indexのload&dump
+
+** Siteクラス
+- SiteDataとContentsをデータとして保持する
+- 担当のurlへのrequestやデータの整形などをイッテに引き受ける
+
 #+begin_src plantuml :file static/img/crawler_activity.svg
 start
 
