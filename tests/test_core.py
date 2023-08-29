@@ -40,7 +40,6 @@ class TestCrawler(object):
         return encoded
 
     def hash_name(self, url):
-        url = self.url_encode(url)
         name = hashlib.sha1(url.encode("utf-8")).hexdigest() + ".json"
         return name
 
@@ -63,16 +62,15 @@ class TestCrawler(object):
 
     def test_load(self):
         crawler = Crawler(domain)
-        url = domain + target
+        url = self.url_encode(domain + target)
         name = self.hash_name(url)
         
         data = crawler.load(f"../tmp/{name}")
-        print(f"\n\ntmp/{name}\n\n")
         assert data
 
-    def test_make_soup(self):
+    def test_get_json_from_res(self):
         crawler = Crawler(domain)
         res = crawler.get_res(target)
-        data = crawler.get_json(res)
+        data = crawler.get_json_from_res(res)
         assert data["hrefs"]
 
