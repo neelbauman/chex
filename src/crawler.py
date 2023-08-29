@@ -13,31 +13,54 @@ from bs4 import BeautifulSoup as bs4
 import requests
 
 import os, sys
-import json, re, collections, urllib, hashlib, random
+import json, re, collections, random, urllib, hashlib, dataclasses, datetime
+
+@dataclasses.dataclass
+class Contents:
+    html: str
+
+@dataclasses.dataclass
+class HrefList:
+    first: datetime.datetime
+    last: datetime.datetime
+    active: bool
+    n_ref: int
+    n_passed: int
+    score: float
+    url: str
+
+@dataclasses.dataclass
+class SiteData:
+    first: datetime.datetime
+    last: datetime.datetime
+    active: bool
+    n_refef: int
+    n_visited: int
+    contents: Contents
+    hrefs: HrefList
+    url: str
 
 
 class Site(object):
     """
     Data Unit
     """
-    def __init__(self, *args, **kwargs):
-        self._args = args
+    def __init__(self, data, *args, **kwargs):
         self._kwargs = kwargs
-        self.data = None
+        self._args = args
+        self.data: SiteData = data
         self.contents = requests.Response()
 
     def __str__(self):
         return self.data["url"]
 
-    def dumps_data(self):
-        return 
-
     @property
     def data(self):
-        doc = "data property"
+        doc = "Site.data property"
 
         def fget():
             return self._data
+
         def fset(value):
             try:
                 self._data = value
@@ -45,6 +68,7 @@ class Site(object):
             except:
                 raise ValueError(f"something wrong to set value:{value} for self._data")
                 return False
+
         def fdel():
             try:
                 del self._data
@@ -64,12 +88,59 @@ class Crawler(object):
         self._args = args
         self._kwargs = kwargs
         self._target = ""
-        self._i_t = 0
         self._next_target = ""
-        self._i_nt = 0
-        self._footprint = []
+        self.footprint = []
         self._init_index(domain)
         self._get_started()
+
+    @property
+    def index(self):
+        doc = "self.index property"
+
+        def fget(self):
+            return self.index
+        
+        def fset(self, value):
+            try:
+                self.index = value
+                return True
+            except:
+                raise ValueError(f"something wrong to set value:{value} for self.index")
+                return False
+
+        def fdel(self):
+            try:
+                del self.index
+                return True
+            except:
+                raise ValueError(f"something wrong to delete self.index")
+
+        return property(fget,fset,fdel,doc)
+
+    @property
+    def footprint(self):
+        doc = "self.footprint property"
+
+        def fget(self):
+            return self._footprint
+        
+        def fset(self, value):
+            try:
+                self._footprint = value
+                return True
+            except:
+                raise ValueError(f"something wrong to set value:{value} for self._footprint")
+                return False
+
+        def fdel(self):
+            try:
+                del self._footprint
+                return True
+            except:
+                raise ValueError(f"something wrong to delete self._footprint")
+
+        return property(fget,fset,fdel,doc)
+
 
     def _url_encode(self, url:str):
         encoded = urllib.parse.quote(url, safe=":/%")
@@ -83,7 +154,7 @@ class Crawler(object):
 
     def _init_index(self, domain):
         file_name = "index.json"
-        dir_name = "../tmp/" + self._hash_name(self._url_encode(domain), "")
+        dir_name = "../tmp/" + self._hash_name(self._url_encode(domain), extension="")
         index_path = dir_name + file_name
 
         self._dir_name = dir_name
