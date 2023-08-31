@@ -9,6 +9,7 @@ Recconaissance Unit
 3. ページ間の関連・繋がりをフローとして表現する
 
 """
+
 from bs4 import BeautifulSoup as bs4
 import requests
 
@@ -21,7 +22,7 @@ class Contents:
     html: str
 
 @dataclasses.dataclass
-class HrefList:
+class Href:
     first: datetime.datetime
     last: datetime.datetime
     active: bool
@@ -40,7 +41,7 @@ class SiteData:
     active: bool
     n_refef: int
     n_visited: int
-    hrefs: [HrefList]
+    hrefs: [Href]
     url: str
 
 
@@ -115,7 +116,7 @@ class Crawler(object):
         self._args = args
         self._kwargs = kwargs
         self._init_index()
-        self._get_started()
+        self._init_footprint()
 
     @property
     def index(self):
@@ -178,8 +179,7 @@ class Crawler(object):
 
     def _init_index(self):
         """
-        対象のドメインのindex.jsonがあればそれをロードする。
-        なければディレクトリごとindex.jsonを作成して、自分は空listを持つ。
+        load or make domain/index.json
         """
         file_name = "index.json"
         dir_name = self._hash_name(self._url_encode(self._domain), extension="")
@@ -187,60 +187,50 @@ class Crawler(object):
 
         if os.path.exists(index_path):
             index = self.load_json(index_path)
-            data_list = []
-            for data in index:
-               data_list.append(SiteData(**data))
-
+            data_list = [ SiteData(**data) for data in index ]
             self.index = data_list
         else:
             try:
                 os.makedirs(dir_name)
             except:
-                raise valueError(f"couldn't make dir:{dir_name}")
+                raise ValueError(f"couldn't make dir:{dir_name}")
 
             with open(index_path, "w") as f:
                 f.write("")
+
             self.index = []
-    
-    def _get_lp(self) -> SiteData:
-        """
-        サーバールートからリダイレクトされるページ(LP)の取得
-        """
-        res = self.get_res(self._domain)
-        lp = self._get_data_from_res(res)
 
-        self._lp_url = lp.url
-
-        return lp
-
-    def _get_started(self):
+    def _init_footprint(self) -> None:
         """
-        self.index:[SiteData]が空であればSiteData.hrefsから次のtargetを決められないので、
+        self.indexが空であればSiteData.hrefsから次のtargetを決められないので、
         まずはLPのSiteDataをself.indexに追加する。
         空でなければ、self.indexの中からランダムでスタート地点を決め、
-        スタート地点のhrefsから次のターゲットをアルゴリズムに従って選定する。
         """
         n = len(self.index)
         if n == 0:
-            data = self._get_lp()
-            self.index.append(data)
+            lp = self._get_lp()
+            self.index.append(lp.data)
+            self._parent= lp
+            self._target = lp
         else:
             r = random.randrange(n)
             data = self.index[r]
+            contents = self.get_res(data.url).text
+            self._parent = Site(data, contents)
+            self._target = Site(data, contents)
 
-        self._target = data
-        self.footprint = [data.url]
-        self._next_target_url = self._get_next_target_url()
+        self.footprint = [self._parent.data]
 
-    def _get_next_target_url(self, algorithm:int = 0) -> str:
+    def _get_target_href(self, algorithm:int = 0):
         """
-        現在のself._target.hrefsの中から適当なアルゴリズムに従ってself._next_targetを決める。
+        現在のself._parent.hrefsの中から適当なアルゴリズムに従ってtarget_hrefを決める
         
         0. hrefsのなかからランダムな選択
-        # 1. 頻度の少ないものから。候補が複数ある場合はランダム
+        1. 頻度の少ないものから。候補が複数ある場合はランダム
         """
+        # case文で実装
         if algoritm == 0:
-            hrefs = self._target.hrefs
+            hrefs = self._parent.hrefs
             n = len(hrefs)
 
             if n < 1:
@@ -248,9 +238,71 @@ class Crawler(object):
             else:
                 r = random.randrange(n)
 
-            next_target_url = hrefs[r].url
+            target_href = hrefs[r]
 
-        return next_target_url
+        self._target_href = target_href
+
+        return target_href
+
+    def _update_target_href(self, res):
+        if res.status_code == 200:
+            self._target_href.active = True
+            self._target_href.n_passed += 1
+            self._target_href.last = res["Date"]
+
+            return True
+        
+        else:
+            return False
+            raise ValueError("it seems that request has been failed")
+
+    def _update_hrefs(self):
+        pass
+
+
+    def _get_target_data(self, target_href):
+        """
+        search the target in self.index which has the same url as target_href.url
+        """
+
+        candidate = [ data for data in self.index if data.url == target_href.url ]
+        
+        if len(candidate) == 0:
+            next_target_data = None
+
+        elif len(candidate) >= 2:
+            next_target_data = None
+            raise ValueError("there is some duplication in self.index")
+        else:
+            next_target_data = candidate[0]
+            self._target_i = self.index.index(next_target_data)
+
+        return next_target_data
+
+    def _get_target(self, next_target_data):
+        if next_target_data == None:
+            return None
+
+        res = self.get_res(next_target_data.url)
+        data, contents = self._get_data_and_contents(res)
+        site = Site(data, contents)
+        
+        self._target = site
+
+        return site
+
+    def _get_lp(self) -> Site:
+        """
+        get LP which is a page that is redirected from server root like https://math.jp
+        """
+        res = self.get_res(self._domain)
+        lp_data, lp_contents = self._get_data_and_contents(res)
+        lp = Site(lp_data, lp_contents)
+
+        self._lp_url = lp.data.url
+
+        return lp
+
 
     def load_json(self, file_path):
         try:
@@ -263,7 +315,7 @@ class Crawler(object):
 
         return data
 
-    def get_res(self, url:str, **kwargs):
+    def get_res(self, url:str, **kwargs) -> requests.Response:
         url = self._url_encode(url)
         params = kwargs if kwargs else None
 
@@ -285,7 +337,7 @@ class Crawler(object):
 
         return hrefs
 
-    def get_json_from_res(self, res):
+    def _get_data_and_contents(self, res:requests.Response) -> (SiteData, Contents):
         soup = self._get_soup(res)
         hrefs = self._get_hrefs(soup)
         hist = collections.Counter(hrefs).most_common()
@@ -310,13 +362,11 @@ class Crawler(object):
             "hrefs": hrefs,
             "url": self._url_encode(res.url),
             }
-        
-        return data
 
-    def _get_data_from_res(self, res):
-        json_dict = self.get_json_from_res(res)
-        data = SiteData(**json_dict)
+        contents = {
+            "html": res.text
+        }
 
-        return data
-        
+        return SiteData(**data), Contents(**text)
+
 

@@ -68,58 +68,122 @@ activate CRAWLER
 #+end_src
 
 * CRAWLERの実装 [0/4]
-** TODO コアとなるsurveyの実装（ローカルでの挙動） [23%]
+** TODO Crawler [23%]
 *** TODO Crawler初期化 [0%]
 **** TOTEST domainを渡して初期化
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 06:48]
      :END:
-**** TOTEST domainのhash名でデータが存在しているかを確認する
+**** TOTEST indexを初期化する
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 06:48]
      :END:
-**** TOTEST データが存在していればindexをロードしてデータとして保持する
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-25 金 15:28]
-    :END:
-**** TOTEST データが存在していなければディレクトリを作成し、空のindexを持つ
+**** TOTEST self._parent, self._target, self.footprintの初期化
      :LOGBOOK:
-     - State "TOTEST"     from              [2023-08-28 月 06:49]
+     - State "TOTEST"     from              [2023-08-31 木 11:29]
      :END:
-**** TOTEST footprintを空のリストで持つ
-     :LOGBOOK:
-     - State "TOTEST"     from              [2023-08-28 月 06:52]
-     :END:
-*** TODO データ取得 [14%]
-**** TOTEST indexがあればスタート位置をランダムにindexから選ぶ
-     :LOGBOOK:
-     - State "TOTEST"     from              [2023-08-28 月 06:53]
-     :END:
-**** TOTEST indexがなければdomainルートにアクセスしてリダイレクトされるページ（LP）から始める
+***** TOTEST indexが空であればLPから始める
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 06:54]
      :END:
-**** GREEN [[https://math.jp/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8][Mathpedia]]のtargetにRequestでgetを飛ばす
-    :LOGBOOK:
-    - State "GREEN"      from "TOTEST"     [2023-08-27 日 11:01]
-    - State "TOTEST"     from              [2023-08-23 水 14:54]
-    :END:
-**** TOTEST getが成功すればfootprintを更新、indexの情報を更新
+***** TOTEST indexがあればfootprintのスタート位置をランダムにindexから選ぶ
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:53]
+     :END:
+
+*** TODO 基礎的な振る舞い [0%]
+**** self._parent.data.hrefsの更新
+**** TOTEST self._parent.data.hrefsからtarget_hrefを選び、self._target_hrefに格納
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 06:57]
      :END:
-**** TOTEST getに失敗すれば再度ページの選定をして別のページを選ぶ
+***** TOTEST hrefsの中から特定のアルゴリズムにしたがって次のページを決める（最初は乱数）
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-28 月 06:59]
+     :END:
+**** TOTEST self._target_href.urlにリクエストを飛ばして、resを取得、self._resに保存
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 11:14]
+     :END:
+**** TOTEST resの結果に応じてself._target_hrefを更新、適切なresが得られるまで繰り返す
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 11:17]
+     :END:
+***** TOTEST 成功してればactive:True,self._target_href["n_passed"]+1,lastタイムスタンプ
+      :LOGBOOK:
+      - State "TOTEST"     from              [2023-08-31 木 15:10]
+      :END:
+***** TOTEST getに失敗すればactive:Falseにしてtarget_hrefの選定に戻ってやり直す
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 07:02]
      :END:
-**** TOTEST resからhrefsを取得し、indexのhrefsと差分が無いか調べる
+
+
+
+**** self._targetの作成
+**** TOTEST indexからself._target_href.urlと同じurlをもったdataを取ってきてself._dataに格納
      :LOGBOOK:
-     - State "TOTEST"     from              [2023-08-28 月 06:59]
+     - State "TOTEST"     from              [2023-08-31 木 11:13]
      :END:
-**** TOTEST hrefsの中から特定のアルゴリズムにしたがって次のページを決める（最初は乱数）
+***** TOTEST このときのindexをself._iに格納する
+      :LOGBOOK:
+      - State "TOTEST"     from              [2023-08-31 木 11:23]
+      :END:
+***** TOTEST ヒットするdataがなければself._iは-1、self._dataはNone
+      :LOGBOOK:
+      - State "TOTEST"     from              [2023-08-31 木 11:46]
+      :END:
+**** TOTEST self._dataとself._resからSiteオブジェクトを作成し、self._targetに格納
      :LOGBOOK:
-     - State "TOTEST"     from              [2023-08-28 月 06:59]
+     - State "TOTEST"     from              [2023-08-31 木 11:14]
      :END:
+***** self._data == None ならばself._resからdataも作成する。
+
+
+**** self._target.dataの更新
+**** TOTEST self._target.dataのパラメータを更新する
+     :LOGBOOK:
+     - State "TOTEST"     from "TOTEST"     [2023-08-31 木 11:56]
+     :END:
+***** self._target.data["n_visited"]+1
+***** active:True
+***** last timestamp
+***** 
+**** TOTEST self._targetとself._parentの比較処理でself._target_href["score"]を計算
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 14:58]
+     :END:
+
+
+
+**** self.indexとself.footprintの更新
+**** TOTEST self.index[self._p_i]にself._parent.dataを格納
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 14:54]
+     :END:
+**** TOTEST self.index[self._i]にself._target.dataを格納
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 14:54]
+     :END:
+***** TOTEST self._i==-1であればインデックスにdataが存在しないページなのでindex.append
+      :LOGBOOK:
+      - State "TOTEST"     from              [2023-08-31 木 15:13]
+      :END:
+
+
+**** TOTEST self._targetをself._parentに格納
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 14:59]
+     :END:
+**** TOTEST self._iをself._p_iに格納
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 14:59]
+     :END:
+**** TOTEST self.footprintにself._target.dataを格納
+     :LOGBOOK:
+     - State "TOTEST"     from              [2023-08-31 木 15:15]
+     :END:
+
 *** TODO サイクル単位で情報を保存する [0%]
 **** TOTEST footprintが初期化規定に触れたか判定
      :LOGBOOK:
@@ -135,17 +199,8 @@ activate CRAWLER
      :LOGBOOK:
      - State "TOTEST"     from              [2023-08-28 月 07:08]
      :END:
-*** TODO ターゲットページに過去に訪問したことがあるかを調べる [100%]
-**** GREEN ターゲットのデータファイルが存在するかどうかを確認する
-     :LOGBOOK:
-     - State "GREEN"      from "TOTEST"     [2023-08-27 日 18:18]
-     - State "TOTEST"     from              [2023-08-27 日 11:05]
-     :END:
-**** GREEN 存在する場合、jsonを読み込む。存在しない場合、新規ファイルを作成する。
-    :LOGBOOK:
-    - State "GREEN"      from "TOTEST"     [2023-08-27 日 18:18]
-    - State "TOTEST"     from              [2023-08-25 金 15:28]
-    :END:
+***** jsonに変換してからindex.jsonにダンプしないと行けない
+
 
 *** TOTEST HTMLをjsonに保存できる
     :LOGBOOK:
