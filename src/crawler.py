@@ -21,6 +21,7 @@ import json, re, datetime, random, collections, dataclasses
 class Contents:
     html: str
 
+
 @dataclasses.dataclass
 class Href:
     first: datetime.datetime
@@ -30,6 +31,7 @@ class Href:
     n_passed: int
     score: float
     url: str
+
 
 @dataclasses.dataclass
 class SiteData:

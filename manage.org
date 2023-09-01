@@ -68,7 +68,7 @@ activate CRAWLER
 #+end_src
 
 * CRAWLERの実装 [0/4]
-** TODO Crawler [23%]
+** TODO Crawler [0%]
 *** TODO Crawler初期化 [0%]
 **** TOTEST domainを渡して初期化
      :LOGBOOK:
@@ -201,7 +201,6 @@ activate CRAWLER
      :END:
 ***** jsonに変換してからindex.jsonにダンプしないと行けない
 
-
 *** TOTEST HTMLをjsonに保存できる
     :LOGBOOK:
     - State "TOTEST"     from              [2023-08-23 水 15:07]
@@ -266,3 +265,4 @@ activate CRAWLER
     - State "TOTEST"     from              [2023-08-23 水 15:17]
     :END:
 * PARSERの実装
+* EVALUATERの実装
