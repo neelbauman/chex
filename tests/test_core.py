@@ -77,3 +77,6 @@ class TestCrawler(object):
         data = crawler.get_json_from_res(res)
         assert data["hrefs"]
 
+    def test_crawling(self):
+        crawler = Crawler(domain)
+        crawler.crawling

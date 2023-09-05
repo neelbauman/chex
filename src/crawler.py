@@ -67,12 +67,7 @@ class Site(object):
             return self._data
 
         def fset(value):
-            try:
-                self._data = value
-                return True
-            except:
-                raise ValueError(f"something wrong to set value:{value} for self._data")
-                return False
+            self._data = value
 
         def fdel():
             try:
@@ -82,6 +77,9 @@ class Site(object):
                 raise ValueError("something wrong to delete self._data")
 
         return property(fget,fset,fdel,doc)
+    @data.setter
+    def data(self, value):
+        self._data = value
 
     @property
     def contents(self):
@@ -91,12 +89,7 @@ class Site(object):
             return self._contents
 
         def fset(value):
-            try:
-                self._contents = value
-                return True
-            except:
-                raise ValueError(f"something wrong to set value:{value} for self._contents")
-                return False
+            self._contents = value
 
         def fdel():
             try:
@@ -121,27 +114,10 @@ class Crawler(object):
 
     @property
     def index(self):
-        doc = "self.index property"
-
-        def fget(self):
-            return self._index
-        
-        def fset(self, value):
-            try:
-                self._index = value
-                return True
-            except:
-                raise ValueError(f"something wrong to set value:{value} for self.index")
-                return False
-
-        def fdel(self):
-            try:
-                del self._index
-                return True
-            except:
-                raise ValueError(f"something wrong to delete self.index")
-
-        return property(fget,fset,fdel,doc)
+        return self._index
+    @index.setter
+    def index(self, value):
+        self._index = value
 
     @property
     def footprint(self):
@@ -153,15 +129,12 @@ class Crawler(object):
         def fset(self, value):
             try:
                 self._footprint = value
-                return True
             except:
                 raise ValueError(f"something wrong to set value:{value} for self.footprint")
-                return False
 
         def fdel(self):
             try:
                 del self._footprint
-                return True
             except:
                 raise ValueError(f"something wrong to delete self.footprint")
 
@@ -174,7 +147,7 @@ class Crawler(object):
         return encoded
 
     def _hash_name(self, s:str, extension:str):
-        name = hashlib.sha1(s.encode("utf-8")).hexdigest() + extention
+        name = hashlib.sha1(s.encode("utf-8")).hexdigest() + extension
         
         return name
 
@@ -182,14 +155,19 @@ class Crawler(object):
         """
         load or make domain/index.json
         """
-        file_name = "index.json"
-        dir_name = self._hash_name(self._url_encode(self._domain), extension="")
-        index_path = "../tmp/" + dir_name + file_name
+        base_name = "../tmp/"
+        file_name = "/index.json"
+        dir_name = base_name + self._hash_name(self._url_encode(self._domain), extension="")
+        index_path = dir_name + file_name
 
         if os.path.exists(index_path):
             index = self.load_json(index_path)
-            data_list = [ SiteData(**data) for data in index ]
-            self.index = data_list
+
+            if index:
+                data_list = [ SiteData(**data) for data in index ]
+                self.index = data_list
+            else:
+                self.index = []
         else:
             try:
                 os.makedirs(dir_name)
@@ -259,7 +237,7 @@ class Crawler(object):
             else:
                 self._target_href.active = False
                 self._target_href = self._get_target_href()
-                loop++
+                loop += 1
         else:
             raise ValueError("something is wrong")
 
@@ -336,7 +314,6 @@ class Crawler(object):
             data = json.loads(s)
         except:
             data = None
-            raise ValueError(f"couldn't load json:{file_path}")
 
         return data
 
