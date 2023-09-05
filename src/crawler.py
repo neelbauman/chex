@@ -1,6 +1,5 @@
 """
 Recconaissance Unit
-偵察部隊
 
 指定したドメインの構造と詳細を明らかにする。
 
@@ -14,7 +13,7 @@ from bs4 import BeautifulSoup as bs4
 import requests
 
 import os, sys, urllib, hashlib
-import json, re, datetime, random, collections, dataclasses
+import json, re, datetime, time, random, collections, dataclasses
 
 
 @dataclasses.dataclass
@@ -214,12 +213,16 @@ class Crawler(object):
             self.index.append(lp.data)
             self._parent= lp
             self._target = lp
+            self._p_i = 0
+            self._i = 0
         else:
             r = random.randrange(n)
             data = self.index[r]
             contents = self.get_res(data.url).text
             self._parent = Site(data, contents)
             self._target = Site(data, contents)
+            self._p_i = r
+            self._i = r
 
         self.footprint = [self._parent.data]
 
@@ -244,54 +247,74 @@ class Crawler(object):
 
         self._target_href = target_href
 
-        return target_href
-
-    def _update_target_href(self, res):
-        if res.status_code == 200:
-            self._target_href.active = True
-            self._target_href.n_passed += 1
-            self._target_href.last = res["Date"]
-
-            return True
-        
+    def _update_target_href(self):
+        loop = 1
+        while loop < 100:
+            res = self.get_res(self._target_href.url)
+            if res.status_code == 200:
+                self._target_href.active = True
+                self._target_href.n_passed += 1
+                self._target_href.last = res["Date"]
+                break
+            else:
+                self._target_href.active = False
+                self._target_href = self._get_target_href()
+                loop++
         else:
-            return False
-            raise ValueError("it seems that request has been failed")
+            raise ValueError("something is wrong")
 
-    def _update_hrefs(self):
-        pass
+        self._res = res
 
 
-    def _get_target_data(self, target_href):
+    def _get_target_data(self):
         """
-        search the target in self.index which has the same url as target_href.url
+        search the target in self.index which has the same url as self._target_href.url
         """
 
-        candidate = [ data for data in self.index if data.url == target_href.url ]
+        candidate = [ data for data in self.index if data.url == self._target_href.url ]
         
         if len(candidate) == 0:
-            next_target_data = None
+            target_data = None
+            self._i = -1
 
         elif len(candidate) >= 2:
-            next_target_data = None
+            target_data = None
             raise ValueError("there is some duplication in self.index")
         else:
-            next_target_data = candidate[0]
-            self._target_i = self.index.index(next_target_data)
+            target_data = candidate[0]
+            self._i = self.index.index(target_data)
 
-        return next_target_data
+        self._data = target_data
 
-    def _get_target(self, next_target_data):
-        if next_target_data == None:
-            return None
+        return target_data
 
-        res = self.get_res(next_target_data.url)
-        data, contents = self._get_data_and_contents(res)
+    def _update_target_data(self):
+        data, contents = self._get_data_and_contents(self._res)
+
+        if self._data:
+            data = self._data
+
         site = Site(data, contents)
+        site.data.n_visited += 1
+        site.data.active = True
+        site.data.last = self._res["Date"]
         
         self._target = site
 
         return site
+
+    def _update_index(self):
+        self.index[self._p_i] = self._parent.data
+        if self._i == -1:
+            self.index.append(self._target.data)
+        else:
+            self.index[self._i] = self._target.data
+
+        self._parent = self._target
+        self._p_i = self._i
+
+    def _update_footprint(self):
+        self.footprint.append(self._target.data)
 
     def _get_lp(self) -> Site:
         """
@@ -316,6 +339,15 @@ class Crawler(object):
             raise ValueError(f"couldn't load json:{file_path}")
 
         return data
+
+    def dump_json(self, file_path):
+        json_list = [ dataclassed.asdict(data) for data in seif.index ]
+        try:
+            with open(file_path, "w") as f:
+                json.dump(json_list, f, indent=4)
+        except:
+            raise ValueError("some error with dump self.index")
+
 
     def get_res(self, url:str, **kwargs) -> requests.Response:
         url = self._url_encode(url)
@@ -370,5 +402,34 @@ class Crawler(object):
         }
 
         return SiteData(**data), Contents(**text)
+
+    def crawling(self, interval=1):
+        """
+        interval is the time(s) to wait to make a next request 
+        """
+        loop = True
+        while loop:
+            self._get_target_href()
+            self._update_target_href()
+            self._get_target_data()
+            self._update_target_data()
+            self._update_index()
+            self._update_footprint()
+            time.sleep(interval)
+            if len(self._index) >= 100:
+                loop = False
+            else:
+                loop = True
+        else:
+            self.dump_json("tmp/test.json")
+
+
+            
+
+
+            
+
+            
+
 
 
