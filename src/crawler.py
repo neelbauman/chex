@@ -40,7 +40,7 @@ class SiteData:
     first: datetime.datetime
     last: datetime.datetime
     active: bool
-    n_refef: int
+    n_refed: int
     n_visited: int
     hrefs: [Href]
     url: str
@@ -61,44 +61,17 @@ class Site(object):
 
     @property
     def data(self):
-        doc = "Site.data property"
-
-        def fget():
-            return self._data
-
-        def fset(value):
-            self._data = value
-
-        def fdel():
-            try:
-                del self._data
-                return True
-            except:
-                raise ValueError("something wrong to delete self._data")
-
-        return property(fget,fset,fdel,doc)
+        return self._data
     @data.setter
     def data(self, value):
         self._data = value
 
     @property
     def contents(self):
-        doc = "Site.contents property"
-
-        def fget():
-            return self._contents
-
-        def fset(value):
-            self._contents = value
-
-        def fdel():
-            try:
-                del self._contents
-                return True
-            except:
-                raise ValueError(f"something wrong to delete self._contents")
-
-        return property(fget, fset, fdel, doc)
+        return self._contents
+    @contents.setter
+    def contents(self, value):
+        self._contetns = value
 
 
 class Crawler(object):
@@ -121,25 +94,10 @@ class Crawler(object):
 
     @property
     def footprint(self):
-        doc = "self.footprint property"
-
-        def fget(self):
-            return self._footprint
-        
-        def fset(self, value):
-            try:
-                self._footprint = value
-            except:
-                raise ValueError(f"something wrong to set value:{value} for self.footprint")
-
-        def fdel(self):
-            try:
-                del self._footprint
-            except:
-                raise ValueError(f"something wrong to delete self.footprint")
-
-        return property(fget,fset,fdel,doc)
-
+        return self._footprint
+    @footprint.setter
+    def footprint(self, value):
+        self._footprint = value
 
     def _url_encode(self, url:str):
         encoded = urllib.parse.quote(url, safe=":/%")
@@ -360,7 +318,7 @@ class Crawler(object):
             "n_ref": href[1],
             "n_passed": 0,
             "score": 0,
-            "url": self._url_encode(domain+href[0]),
+            "url": self._url_encode(self._domain+href[0]),
             }
             for href in hist ]
 
@@ -378,7 +336,7 @@ class Crawler(object):
             "html": res.text
         }
 
-        return SiteData(**data), Contents(**text)
+        return SiteData(**data), Contents(**contents)
 
     def crawling(self, interval=1):
         """

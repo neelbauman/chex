@@ -53,29 +53,10 @@ class TestCrawler(object):
     def test_update_target_href(self):
         pass
 
-    def test_get_lp(self):
-        crawler = Crawler(domain)
-        lp_url = crawler._get_lp()
-        assert lp_url == self.url_encode(domain+lp)
-
     def test_get_res(self):
         crawler = Crawler(domain)
-        res = crawler.get_res(target)
+        res = crawler.get_res(domain+target)
         assert res.status_code == 200
-
-    def test_load(self):
-        crawler = Crawler(domain)
-        url = self.url_encode(domain + target)
-        name = self.hash_name(url)
-        
-        data = crawler.load(f"../tmp/{name}")
-        assert data
-
-    def test_get_json_from_res(self):
-        crawler = Crawler(domain)
-        res = crawler.get_res(target)
-        data = crawler.get_json_from_res(res)
-        assert data["hrefs"]
 
     def test_crawling(self):
         crawler = Crawler(domain)

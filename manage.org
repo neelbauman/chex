@@ -68,6 +68,15 @@ activate CRAWLER
 #+end_src
 
 * CRAWLERの実装 [0/4]
+責任のメソッドと、それを実現するために保持しなければならないデータ及び遂行能力（職能）のメソッドを切り分けること。
+責任は職能に依存するが、各職能は独立であるべきだ。Tracebackはできるだけ浅くするのが良い。
+”くりこみ”のラインを見極める。外界との相互作用と独立した内部処理。
+
+crawlerの責任は、自動でクローリングすることとサイトマップを作ること。
+クローリングの実行指示はマネージャが出すので。
+そのために必要な遂行能力は、
+- サイトをランダムウォークできること。
+- 必要な情報を保存・読み出し・保存できること。
 ** TODO Crawler [0%]
 *** TODO Crawler初期化 [0%]
 **** TOTEST domainを渡して初期化
@@ -149,8 +158,10 @@ activate CRAWLER
 ***** active:True
 ***** last timestamp
 ***** 
-**** TOTEST self._targetとself._parentの比較処理でself._target_href["score"]を計算
+**** WAIT self._targetとself._parentの比較処理でself._target_href["score"]を計算
      :LOGBOOK:
+     - State "WAIT"       from "TOTEST"     [2023-09-05 火 14:06] \\
+       crawlerではこの処理は行わない。別のクラスのオブジェクトが担う
      - State "TOTEST"     from              [2023-08-31 木 14:58]
      :END:
 
@@ -169,7 +180,6 @@ activate CRAWLER
       :LOGBOOK:
       - State "TOTEST"     from              [2023-08-31 木 15:13]
       :END:
-
 
 **** TOTEST self._targetをself._parentに格納
      :LOGBOOK:
