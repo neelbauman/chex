@@ -1,26 +1,3 @@
-"""
-* 実践TDD with pytest
-
-** テストのパラメタライズ
-逐次実行でエラーが起きたらテスト終了ではなく、
-定義された範囲でパラメータを全走査して結果をまとめて返す。
-
-** フィクスチャ
-テスト環境の動的な整備と後処理
-
-*** 基本的な前処理と後処理
-*** テンポラリの作成
-*** fixtureのスコープの変更
-*** conftest.py
-*** 標準出力のキャプチャ
-
-** モック（発展）
-仕様と実装の整合性、関数、クラス、モジュール間の依存関係のテスト
-pytest-mockというプラグインが必要
-
-* 単体テストという考え方
-
-"""
 import pytest
 from src.crawler import Crawler
 
@@ -43,12 +20,38 @@ class TestCrawler(object):
         name = hashlib.sha1(url.encode("utf-8")).hexdigest() + ".json"
         return name
 
-    def test_url_encode(self):
-        assert target == self.url_encode(target)
-
+    # 1.1.1
     def test_init(self):
         crawler = Crawler(domain)
         assert crawler._domain == domain
+
+    # 1.1.2
+    def test_init_index(self):
+        pass
+
+    # 1.1.3
+    def test_init_footprint(self):
+        pass
+
+    # 1.1.3
+    def test_init_parent(self):
+        pass
+
+    # 1.1.3
+    def test_init_target(self):
+        pass
+
+    # 1.2.1
+    def test_select_target_href(self):
+        pass
+
+    # 1.2.2
+    def test_get_target(self):
+        pass
+
+    # 1.2.3
+    def test_update_target_href(self):
+        pass
 
     def test_get_lp(self):
         crawler = Crawler(domain)
