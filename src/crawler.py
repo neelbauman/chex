@@ -112,19 +112,14 @@ class Crawler(base.Handler):
         """
         load or make domain/index.json
         """
-        base_name = "../tmp/"
-        file_name = "/index.json"
+        base_name = "tmp/"
         dir_name = base_name + self._hash_name(self._url_encode(self.domain), extension="")
+        file_name = "/index.json"
         index_path = dir_name + file_name
 
         if os.path.exists(index_path):
-            index = self.load_json(index_path)
-
-            if index:
-                data_list = [ SiteData(**data) for data in index ]
-                self.index = data_list
-            else:
-                self.index = []
+            index = self._load_index(index_path)
+            self.index = [ SiteData(**data) for data in index ]
         else:
             try:
                 os.makedirs(dir_name)
@@ -265,17 +260,17 @@ class Crawler(base.Handler):
         return lp
 
 
-    def load_json(self, file_path):
+    def _load_index(self, file_path):
         try:
             with open(file_path, "r") as f:
                 s = f.read()
             data = json.loads(s)
         except:
-            data = None
+            data = []
 
         return data
 
-    def dump_json(self, data, file_path):
+    def _dump_index(self, data, file_path):
         try:
             with open(file_path, "w") as f:
                 json.dump(data, f, indent=4)
@@ -359,7 +354,7 @@ class Crawler(base.Handler):
                 loop = True
         else:
             json_list = [ dataclasses.asdict(data) for data in self.index ]
-            self.dump_json(json_list, "tmp/test.json")
+            self._dump_index(json_list, "tmp/test.json")
 
 
             
