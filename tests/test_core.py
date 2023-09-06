@@ -24,8 +24,8 @@ class TestCrawler(Handler):
 
     @pytest.mark.parametrize(
         ("file_path", "expected"), [
-            ("tests/tmp/index.js", 5),
-            ("tests/tmp/test.js", 0),
+            ("tmp/index.json", 5),
+            ("tmp/test.json", 0),
         ]
     )
     def test_load_index(self, file_path, expected):
@@ -34,7 +34,7 @@ class TestCrawler(Handler):
         assert len(index) == expected
 
         if expected >= 1:
-            assert type(crawler.index[0]) is Site
+            assert type(crawler.index[0]) is SiteData
 
 
     def test_dump_index(self):

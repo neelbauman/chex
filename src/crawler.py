@@ -118,6 +118,7 @@ class Crawler(base.Handler):
         index_path = dir_name + file_name
 
         if os.path.exists(index_path):
+#            print("\n\n\nfoo\n\n\n")
             index = self._load_index(index_path)
             self.index = [ SiteData(**data) for data in index ]
         else:
