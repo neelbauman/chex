@@ -14,6 +14,7 @@ import requests
 
 import os, sys, urllib, hashlib
 import json, re, datetime, time, random, collections, dataclasses
+from typing import List
 
 
 @dataclasses.dataclass
@@ -42,7 +43,7 @@ class SiteData:
     active: bool
     n_refed: int
     n_visited: int
-    hrefs: [Href]
+    hrefs: List[Href]
     url: str
 
 
@@ -170,11 +171,11 @@ class Crawler(object):
         1. 頻度の少ないものから。候補が複数ある場合はランダム
         """
         # case文で実装
-        if algoritm == 0:
-            hrefs = self._parent.hrefs
+        if algorithm == 0:
+            hrefs = self._parent.data.hrefs
             n = len(hrefs)
 
-            if n < 1:
+            if n <= 1:
                 raise ValueError("couldn't get next_target")
             else:
                 r = random.randrange(n)
@@ -183,6 +184,7 @@ class Crawler(object):
 
         self._target_href = target_href
 
+
     def _update_target_href(self):
         loop = 1
         while loop < 100:
@@ -190,11 +192,11 @@ class Crawler(object):
             if res.status_code == 200:
                 self._target_href.active = True
                 self._target_href.n_passed += 1
-                self._target_href.last = res["Date"]
+                self._target_href.last = res.headers["Date"]
                 break
             else:
                 self._target_href.active = False
-                self._target_href = self._get_target_href()
+                self._get_target_href()
                 loop += 1
         else:
             raise ValueError("something is wrong")
@@ -233,7 +235,7 @@ class Crawler(object):
         site = Site(data, contents)
         site.data.n_visited += 1
         site.data.active = True
-        site.data.last = self._res["Date"]
+        site.data.last = self._res.headers["Date"]
         
         self._target = site
 
@@ -276,7 +278,7 @@ class Crawler(object):
         return data
 
     def dump_json(self, file_path):
-        json_list = [ dataclassed.asdict(data) for data in seif.index ]
+        json_list = [ dataclasses.asdict(data) for data in self.index ]
         try:
             with open(file_path, "w") as f:
                 json.dump(json_list, f, indent=4)
@@ -311,15 +313,16 @@ class Crawler(object):
         hrefs = self._get_hrefs(soup)
         hist = collections.Counter(hrefs).most_common()
         
-        hrefs = [{
-            "first": "yet",
-            "last": "yet",
-            "active": True,
-            "n_ref": href[1],
-            "n_passed": 0,
-            "score": 0,
-            "url": self._url_encode(self._domain+href[0]),
-            }
+        hrefs = [
+            Href(
+                first = "yet",
+                last = "yet",
+                active = True,
+                n_ref = href[1],
+                n_passed = 0,
+                score = 0,
+                url = self._url_encode(self._domain+href[0])
+            )
             for href in hist ]
 
         data = {
@@ -350,8 +353,9 @@ class Crawler(object):
             self._update_target_data()
             self._update_index()
             self._update_footprint()
+            print(f"now i\'m in {self._target.data.url}")
             time.sleep(interval)
-            if len(self._index) >= 100:
+            if len(self._footprint) >= 5:
                 loop = False
             else:
                 loop = True
