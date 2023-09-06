@@ -14,7 +14,8 @@ import requests
 
 import os, sys, urllib, hashlib
 import json, re, datetime, time, random, collections, dataclasses
-from typing import List
+
+import base
 
 
 @dataclasses.dataclass
@@ -43,11 +44,11 @@ class SiteData:
     active: bool
     n_refed: int
     n_visited: int
-    hrefs: List[Href]
+    hrefs: [Href]
     url: str
 
 
-class Site(object):
+class Site(base.Handler):
     """
     SiteData & Contents Unit
     """
@@ -75,16 +76,23 @@ class Site(object):
         self._contetns = value
 
 
-class Crawler(object):
+class Crawler(base.Handler):
     """
     Survey Unit
     """
-    def __init__(self, domain:str, *args, **kwargs):
-        self._domain = domain
+    def __init__(self, domain:str = "", *args, **kwargs):
+        self.domain = domain
         self._args = args
         self._kwargs = kwargs
         self._init_index()
         self._init_footprint()
+    
+    @property
+    def domain(self):
+        return self._domain
+    @domain.setter
+    def domain(self, value):
+        self._domain = value
 
     @property
     def index(self):
@@ -100,23 +108,13 @@ class Crawler(object):
     def footprint(self, value):
         self._footprint = value
 
-    def _url_encode(self, url:str):
-        encoded = urllib.parse.quote(url, safe=":/%")
-
-        return encoded
-
-    def _hash_name(self, s:str, extension:str):
-        name = hashlib.sha1(s.encode("utf-8")).hexdigest() + extension
-        
-        return name
-
     def _init_index(self):
         """
         load or make domain/index.json
         """
         base_name = "../tmp/"
         file_name = "/index.json"
-        dir_name = base_name + self._hash_name(self._url_encode(self._domain), extension="")
+        dir_name = base_name + self._hash_name(self._url_encode(self.domain), extension="")
         index_path = dir_name + file_name
 
         if os.path.exists(index_path):
@@ -258,7 +256,7 @@ class Crawler(object):
         """
         get LP which is a page that is redirected from server root like https://math.jp
         """
-        res = self.get_res(self._domain)
+        res = self.get_res(self.domain)
         lp_data, lp_contents = self._get_data_and_contents(res)
         lp = Site(lp_data, lp_contents)
 
@@ -277,14 +275,14 @@ class Crawler(object):
 
         return data
 
-    def dump_json(self, file_path):
-        json_list = [ dataclasses.asdict(data) for data in self.index ]
+    def dump_json(self, data, file_path):
         try:
             with open(file_path, "w") as f:
-                json.dump(json_list, f, indent=4)
+                json.dump(data, f, indent=4)
         except:
-            raise ValueError("some error with dump self.index")
+            raise ValueError(f"some error with dump {data}")
 
+        return True
 
     def get_res(self, url:str, **kwargs) -> requests.Response:
         url = self._url_encode(url)
@@ -321,7 +319,7 @@ class Crawler(object):
                 n_ref = href[1],
                 n_passed = 0,
                 score = 0,
-                url = self._url_encode(self._domain+href[0])
+                url = self._url_encode(self.domain+href[0])
             )
             for href in hist ]
 
@@ -360,7 +358,8 @@ class Crawler(object):
             else:
                 loop = True
         else:
-            self.dump_json("tmp/test.json")
+            json_list = [ dataclasses.asdict(data) for data in self.index ]
+            self.dump_json(json_list, "tmp/test.json")
 
 
             
