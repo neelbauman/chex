@@ -1,6 +1,7 @@
 """
 Abstruct classes
 """
+import urllib, hashlib
 
 
 class Handler(object):
