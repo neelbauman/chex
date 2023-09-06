@@ -1,12 +1,5 @@
 """
 Recconaissance Unit
-
-指定したドメインの構造と詳細を明らかにする。
-
-1. ドメイン以下にあるページの個別の情報を集める
-2. ドメイン全体の地図を作成する
-3. ページ間の関連・繋がりをフローとして表現する
-
 """
 
 from bs4 import BeautifulSoup as bs4
@@ -15,16 +8,22 @@ import requests
 import os, sys
 import json, re, datetime, time, random, collections, dataclasses
 
-import src.base as base
+from src.base import Handler
 
 
 @dataclasses.dataclass
 class Contents:
+    """
+    contents unit of Site
+    """
     html: str
 
 
 @dataclasses.dataclass
 class Href:
+    """
+    element of hrefs in SiteData
+    """
     first: datetime.datetime
     last: datetime.datetime
     active: bool
@@ -37,7 +36,7 @@ class Href:
 @dataclasses.dataclass
 class SiteData:
     """
-    Data Unit
+    Data Unit of Site
     """
     first: datetime.datetime
     last: datetime.datetime
@@ -48,9 +47,12 @@ class SiteData:
     url: str
 
 
-class Site(base.Handler):
+class Site(Handler):
     """
     SiteData & Contents Unit
+
+    # TODO
+    Siteオブジェクト同士の演算を定義したい。
     """
     def __init__(self, data: SiteData, contents: Contents, *args, **kwargs) -> None:
         self._kwargs = kwargs
@@ -60,6 +62,9 @@ class Site(base.Handler):
 
     def __str__(self):
         return self.data.url
+    
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def data(self):
@@ -76,12 +81,16 @@ class Site(base.Handler):
         self._contetns = value
 
 
-class Crawler(base.Handler):
+class Crawler(Handler):
     """
     Survey Unit
     """
     def __init__(self, domain:str = "", *args, **kwargs):
+        base_dir = "tmp/"
         self.domain = domain
+        self.dir_name = base_dir + self._hash_name(self._url_encode(domain), extension="")
+        self.file_name = "index.json"
+        self.index_path = self.dir_name + self.file_name
         self._args = args
         self._kwargs = kwargs
         self._init_index()
@@ -108,35 +117,46 @@ class Crawler(base.Handler):
     def footprint(self, value):
         self._footprint = value
 
-    def _init_index(self):
+    @property
+    def dir_name(self):
+        return self._dir_name
+    @dir_name.setter
+    def dir_name(self, value):
+        self._dir_name = value
+
+    @property
+    def file_name(self):
+        return self._file_name
+    @file_name.setter
+    def file_name(self, value):
+        self._file_name = value
+
+    @property
+    def index_path(self):
+        return self._index_path
+    @index_path.setter
+    def index_path(self, value):
+        self._index_path = value
+
+    def _init_index(self) -> None:
         """
         load or make domain/index.json
         """
-        base_name = "tmp/"
-        dir_name = base_name + self._hash_name(self._url_encode(self.domain), extension="")
-        file_name = "/index.json"
-        index_path = dir_name + file_name
-
-        if os.path.exists(index_path):
-#            print("\n\n\nfoo\n\n\n")
-            index = self._load_index(index_path)
+        if os.path.exists(self.index_path):
+            index = self._load_index(self.index_path)
             self.index = [ SiteData(**data) for data in index ]
         else:
             try:
-                os.makedirs(dir_name)
-            except:
-                raise ValueError(f"couldn't make dir:{dir_name}")
-
-            with open(index_path, "w") as f:
-                f.write("")
-
-            self.index = []
+                os.makedirs(self.dir_name)
+            except Exception as e:
+                print(e)
+            finally:
+                with open(self.index_path, "w") as f:
+                    f.write("")
+                self.index = []
 
     def _init_footprint(self) -> None:
         """
-        self.indexが空であればSiteData.hrefsから次のtargetを決められないので、
-        まずはLPのSiteDataをself.indexに追加する。
-        空でなければ、self.indexの中からランダムでスタート地点を決め、
         """
         n = len(self.index)
         if n == 0:
@@ -149,7 +169,7 @@ class Crawler(base.Handler):
         else:
             r = random.randrange(n)
             data = self.index[r]
-            contents = self.get_res(data.url).text
+            contents = self._get_res(data.url).text
             self._parent = Site(data, contents)
             self._target = Site(data, contents)
             self._p_i = r
@@ -157,102 +177,108 @@ class Crawler(base.Handler):
 
         self.footprint = [self._parent.data]
 
-    def _get_target_href(self, algorithm:int = 0):
+    def _select_target_href(self, algorithm:int = 0):
         """
-        現在のself._parent.hrefsの中から適当なアルゴリズムに従ってtarget_hrefを決める
+        decide self._target_href from self._parent.hrefs with selected algorithm
         
-        0. hrefsのなかからランダムな選択
-        1. 頻度の少ないものから。候補が複数ある場合はランダム
+        0. definately random
+        1. less-visited one
         """
+        hrefs = self._parent.data.hrefs
+        n = len(hrefs)
+        if n <= 1:
+            raise ValueError("couldn't get next_target")
+
         # case文で実装
         if algorithm == 0:
-            hrefs = self._parent.data.hrefs
-            n = len(hrefs)
+            r = random.randrange(n)
 
-            if n <= 1:
-                raise ValueError("couldn't get next_target")
-            else:
-                r = random.randrange(n)
+        self._target_href = hrefs[r]
 
-            target_href = hrefs[r]
-
-        self._target_href = target_href
-
-
-    def _update_target_href(self):
-        loop = 1
-        while loop < 100:
-            res = self.get_res(self._target_href.url)
-            if res.status_code == 200:
-                self._target_href.active = True
-                self._target_href.n_passed += 1
-                self._target_href.last = res.headers["Date"]
-                break
-            else:
-                self._target_href.active = False
-                self._get_target_href()
-                loop += 1
-        else:
-            raise ValueError("something is wrong")
-
-        self._res = res
-
-
-    def _get_target_data(self):
+    def _select_data(self):
         """
         search the target in self.index which has the same url as self._target_href.url
         """
 
         candidate = [ data for data in self.index if data.url == self._target_href.url ]
         
-        if len(candidate) == 0:
-            target_data = None
+        if len(candidate) < 1:
+            self._data = None
             self._i = -1
-
-        elif len(candidate) >= 2:
-            target_data = None
+        elif len(candidate) == 1:
+            i = self.index.index(candidate[0])
+            self._data = self.index[i]
+            self._i = i
+        else:
             raise ValueError("there is some duplication in self.index")
+
+    """
+    def _update_target_href(self, res):
+        if res.status_code == 200:
+            self._target_href.active = True
+            self._target_href.n_passed += 1
+            self._target_href.last = res.headers["Date"]
         else:
-            target_data = candidate[0]
-            self._i = self.index.index(target_data)
+            self._target_href.active = False
 
-        self._data = target_data
+    def _update_data(self, res):
+        if res.status_code == 200:
+            self._data.active = True
+            self._data.n_visited += 1
+            self._data.last = self._res.headers["Date"]
+        else:
+            self._data.active = False
+    """
 
-        return target_data
+    def _update_target(self) -> None:
+        """
+        try to get response from links in self._parent.data.hrefs for up to 100 times
+        and update self._target with that response
+        """
+        loop = 0
+        while loop < 100:
+            self._select_target_href()
+            self._select_data()
+            res = self._get_res(self._target_href.url)
+            if res.status_code == 200:
+                break
+            else:
+                self._target_href.active = False
+                self._data.active = False
+                loop += 1
+        else:
+            raise ValueError(f"couldn't success in getting response from {self.domain}")
 
-    def _update_target_data(self):
-        data, contents = self._get_data_and_contents(self._res)
+        data, contents = self._get_data_and_contents(res)
 
+        # update self._parent.data.href[r]
+        if self._target_href.last == "yet":
+            self._target_href.first = res.headers["Date"]
+        self._target_href.active = True
+        self._target_href.n_passed += 1
+        self._target_href.last = res.headers["Date"]
+
+        # update self.index[i]
         if self._data:
+            self._data.active = True
+            self._data.n_visited += 1
+            self._data.last = res.headers["Date"]
             data = self._data
-
-        site = Site(data, contents)
-        site.data.n_visited += 1
-        site.data.active = True
-        site.data.last = self._res.headers["Date"]
-        
-        self._target = site
-
-        return site
-
-    def _update_index(self):
-        self.index[self._p_i] = self._parent.data
-        if self._i == -1:
-            self.index.append(self._target.data)
         else:
-            self.index[self._i] = self._target.data
+            self._data = data
+            self.index.append(data)
 
-        self._parent = self._target
-        self._p_i = self._i
+        self._target = Site(data, contents)
 
     def _update_footprint(self):
         self.footprint.append(self._target.data)
+        self._parent = self._target
 
     def _get_lp(self) -> Site:
         """
         get LP which is a page that is redirected from server root like https://math.jp
         """
-        res = self.get_res(self.domain)
+        res = self._get_res(self.domain)
         lp_data, lp_contents = self._get_data_and_contents(res)
         lp = Site(lp_data, lp_contents)
 
@@ -260,13 +286,12 @@ class Crawler(base.Handler):
 
         return lp
 
-
     def _load_index(self, file_path):
         try:
             with open(file_path, "r") as f:
                 s = f.read()
             data = json.loads(s)
-        except:
+        except Exception as e:
             data = []
 
         return data
@@ -280,7 +305,7 @@ class Crawler(base.Handler):
 
         return True
 
-    def get_res(self, url:str, **kwargs) -> requests.Response:
+    def _get_res(self, url:str, **kwargs) -> requests.Response:
         url = self._url_encode(url)
         params = kwargs if kwargs else None
 
@@ -302,38 +327,34 @@ class Crawler(base.Handler):
 
         return hrefs
 
-    def _get_data_and_contents(self, res:requests.Response) -> (SiteData, Contents):
+    def _get_data_and_contents(self, res) -> (SiteData, Contents):
         soup = self._get_soup(res)
         hrefs = self._get_hrefs(soup)
         hist = collections.Counter(hrefs).most_common()
         
-        hrefs = [
-            Href(
-                first = "yet",
-                last = "yet",
-                active = True,
-                n_ref = href[1],
-                n_passed = 0,
-                score = 0,
-                url = self._url_encode(self.domain+href[0])
-            )
-            for href in hist ]
+        hrefs = [ Href(
+            url = self._url_encode(self.domain+href[0]),
+            first = "yet",
+            last = "yet",
+            active = True,
+            n_ref = href[1],
+            n_passed = 0,
+            score = 0
+        ) for href in hist ]
 
-        data = {
-            "first": "yet",
-            "last": "yet",
-            "active": True,
-            "n_refed": 0,
-            "n_visited": 0,
-            "hrefs": hrefs,
-            "url": self._url_encode(res.url),
-            }
+        data = SiteData(
+            url = self._url_encode(res.url),
+            first = res.headers["Date"],
+            last = res.headers["Date"],
+            active = True,
+            n_refed = 0,
+            n_visited = 0,
+            hrefs = hrefs
+        )
 
-        contents = {
-            "html": res.text
-        }
+        contents = Contents(html=res.text)
 
-        return SiteData(**data), Contents(**contents)
+        return data, contents
 
     def crawling(self, interval=1):
         """
@@ -341,11 +362,7 @@ class Crawler(base.Handler):
         """
         loop = True
         while loop:
-            self._get_target_href()
-            self._update_target_href()
-            self._get_target_data()
-            self._update_target_data()
-            self._update_index()
+            self._update_target()
             self._update_footprint()
             print(f"now i\'m in {self._target.data.url}")
             time.sleep(interval)
@@ -355,15 +372,5 @@ class Crawler(base.Handler):
                 loop = True
         else:
             json_list = [ dataclasses.asdict(data) for data in self.index ]
-            self._dump_index(json_list, "tmp/test.json")
-
-
-            
-
-
-            
-
-            
-
-
+            self._dump_index(json_list, "tmp/test2.json")
 

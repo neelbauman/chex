@@ -4,8 +4,9 @@ file://~/org/agenda.org
 * 開発環境
   :ENVIRONMENT:
   :STYLE: テスト駆動オブジェクト指向（TDD&OOD）
-  :TECH: python
-  :KEYWORD: crawling, object-oriented, dataclasses, requests, beautifulsoup, collection
+  :LANGUAGE: python
+  :VIRTUALENV: pyenv + venv
+  :TECH: object-oriented, dataclasses, requests, beautifulsoup, collection, jupyter-lab
   :END:
 
 * 課題事項
@@ -69,10 +70,15 @@ crawlerの責任は、自動でクローリングすることとサイトマッ�
 * 設計
 README.orgに記述
 
-
 * CRAWLER
-設計の段に於いては、以下の３つの項目を順に下に降りていく。このときに、OODの概念が非常に有用。
+設計の段に於いては、以下の４つの項目を順に下に降りていく。このときに、OODの概念が非常に有用。
 実装の段に於いては、下から上に積み重ねていく。このとき、TDDの手法が火を吹く。
+
+* CRAWLERの責任
+*** 適切に初期化できる
+*** 自動で対象ドメインを探索できる 
+*** 過去の記録を探して読み出せる
+*** 現在の探索結果を使って過去の記録を上書きして保存できる
 
 * CRAWLERの動作フロー [0/4]
 まずは、考えた責任に基づいて動作フローを考えることができる。
@@ -274,8 +280,54 @@ README.orgに記述
     - State "TOTEST"     from              [2023-08-23 水 15:17]
     :END:
 
-* CRAWLERの職能
+* CRAWLERのデータと職能
 責任に基づいて動作フローが描けたならば、その動作フローを実現するための職能が必要になり、この要請にしたがって職能を考えることができる。職能にとって重要なことは汎用性・独立性である。
+** データ
+*** domain
+*** dir_name
+*** index
+*** target
+*** target_index
+*** parent
+*** parent_index
+*** footprint
+
+** 職能
+*** TOTEST get_res
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:29]
+   :END:
+指定したURLからリクエストを引っ張ってこれる
+*** TOTEST make_data_and_contents
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:40]
+   :END:
+responseからSiteDataとContentsを作れる
+*** TOTEST select_target_href
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:51]
+   :END:
+次のターゲットを決められる
+*** TOTEST update_index
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:52]
+   :END:
+手元にある情報をもとにindexを更新できる
+*** TOTEST load_index
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:49]
+   :END:
+指定したjsonファイルからindexを作成できる
+*** TOTEST search_index
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:54]
+   :END:
+現在のターゲットの情報がindexにあるかどうかを調べ、存在していたらデータを読み出せる。
+*** TOTEST dump_index
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:50]
+   :END:
+現在のindexを指定したパスのファイルに保存できる。
 
 * CRAWLERの構成
 職能が描けたならば、構成を考えることができる。
