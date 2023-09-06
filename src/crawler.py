@@ -270,7 +270,7 @@ class Crawler(Handler):
 
         self._target = Site(data, contents)
 
-    def _update_footprint(self):
+    def _update_footprint(self) -> None:
         self.footprint.append(self._target.data)
         self._parent = self._target
 
@@ -305,7 +305,7 @@ class Crawler(Handler):
 
         return True
 
-    def _get_res(self, url:str, **kwargs) -> requests.Response:
+    def _get_res(self, url:str, **kwargs):
         url = self._url_encode(url)
         params = kwargs if kwargs else None
 

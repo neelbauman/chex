@@ -18,7 +18,7 @@ class TestCrawler(Handler):
 
     def test_get_res(self):
         crawler = Crawler(domain)
-        res = crawler.get_res(domain+target)
+        res = crawler._get_res(domain+target)
         assert type(res) is requests.models.Response
         assert res.status_code == 200
 
