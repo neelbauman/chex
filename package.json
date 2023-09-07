@@ -1,12 +1,11 @@
 {
   "name": "chex",
-  "packageManager": "yarn@4.0.0-rc.50",
-  "main": "app.js",
-  "volta": {
-    "node": "18.16.0",
-    "yarn": "4.0.0-rc.50"
-  },
+  "packageManager": "yarn@3.6.3",
   "dependencies": {
     "express": "^4.18.2"
+  },
+  "volta": {
+    "node": "16.20.2",
+    "yarn": "4.0.0-rc.50"
   }
 }
