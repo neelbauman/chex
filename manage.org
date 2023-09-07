@@ -237,18 +237,8 @@ README.orgに記述
     - State "TOTEST"     from "WAIT"       [2023-08-23 水 15:09]
     :END:
 ** TODO Webページ構造インデックス作成・表示機能（OFFICER） [0%]
-*** TOTEST 対象ドメインに存在するHTMLのページのインデックスを作成できる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-23 水 15:23]
-    :END:
-*** TOTEST ページ間のリンクのテーブルを作れる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-23 水 15:25]
-    :END:
-*** TOTEST リンクテーブルをもとに、リンクグラフを作って表示できる
-    :LOGBOOK:
-    - State "TOTEST"     from              [2023-08-23 水 15:27]
-    :END:
+*** 
+
 ** TODO 外部ストレージへの保存 [0%]
 *** TOTEST S3へのログイン
     :LOGBOOK:
@@ -286,10 +276,8 @@ README.orgに記述
 *** domain
 *** dir_name
 *** index
-*** target
-*** target_index
-*** parent
-*** parent_index
+*** _target
+*** _parent
 *** footprint
 
 ** 職能
@@ -298,7 +286,7 @@ README.orgに記述
    - State "TOTEST"     from              [2023-09-06 水 13:29]
    :END:
 指定したURLからリクエストを引っ張ってこれる
-*** TOTEST make_data_and_contents
+*** TOTEST get_data_and_contents
    :LOGBOOK:
    - State "TOTEST"     from              [2023-09-06 水 13:40]
    :END:
@@ -308,7 +296,12 @@ responseからSiteDataとContentsを作れる
    - State "TOTEST"     from              [2023-09-06 水 13:51]
    :END:
 次のターゲットを決められる
-*** TOTEST update_index
+*** TOTEST select_data
+   :LOGBOOK:
+   - State "TOTEST"     from              [2023-09-06 水 13:54]
+   :END:
+現在のターゲットの情報がindexにあるかどうかを調べ、存在していたらデータを読み出せる。
+*** TOTEST update_target
    :LOGBOOK:
    - State "TOTEST"     from              [2023-09-06 水 13:52]
    :END:
@@ -318,16 +311,17 @@ responseからSiteDataとContentsを作れる
    - State "TOTEST"     from              [2023-09-06 水 13:49]
    :END:
 指定したjsonファイルからindexを作成できる
-*** TOTEST search_index
-   :LOGBOOK:
-   - State "TOTEST"     from              [2023-09-06 水 13:54]
-   :END:
-現在のターゲットの情報がindexにあるかどうかを調べ、存在していたらデータを読み出せる。
 *** TOTEST dump_index
    :LOGBOOK:
    - State "TOTEST"     from              [2023-09-06 水 13:50]
    :END:
 現在のindexを指定したパスのファイルに保存できる。
+
+*** TOTEST dump_footprint
+    :LOGBOOK:
+    - State "TOTEST"     from              [2023-09-06 水 21:54]
+    :END:
+
 
 * CRAWLERの構成
 職能が描けたならば、構成を考えることができる。
