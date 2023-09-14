@@ -476,7 +476,7 @@ class Crawler(Handler):
 
             print(f"finished a walking properly!")
 
-    def crawling(
+    def touring(
             self,
             interval = 5,
             max_length = 100,

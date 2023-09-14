@@ -42,12 +42,17 @@ class Node:
     id_: str
     name: str
     val: float
+    n_visited: int
+    last: str
+
 
 @dataclasses.dataclass
 class Link:
     source: str
     target: str
     val: float
+    n_passed: int
+    last: str
 
 
 def load_json(file_path:str=""):
@@ -67,18 +72,34 @@ def make_input_json(index):
     for i, site in enumerate(index):
         id_ = site["url"]
         name = site["url"]
-        val = site["score"] + site["n_visited"]
+        val = site["score"] + 1
+        n_visited = site["n_visited"]
+        last = site["last"]
 
-        node = asdict( Node(id_=id_,name=name,val=val) )
+        node = asdict(Node(
+            id_ = id_,
+            name = name,
+            val = val,
+            n_visited = n_visited,
+            last = last
+        ))
         data["nodes"].append(node)
 
         for href in site["hrefs"]:
             if href["url"] in node_list:
                 source = site["url"]
                 target = href["url"]
-                val = href["score"] + href["n_passed"]
+                val = href["score"] + 1
+                n_passed = href["n_passed"]
+                last = href["last"]
 
-                link = asdict( Link(source=source,target=target,val=val) )
+                link = asdict(Link(
+                    source = source,
+                    target = target,
+                    val = val,
+                    n_passed = n_passed,
+                    last = last
+                ))
                 data["links"].append(link)
             else:
                 pass
