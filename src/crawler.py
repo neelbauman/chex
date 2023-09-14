@@ -7,7 +7,8 @@ import requests
 from requests.exceptions import Timeout
 
 import os, sys
-import json, re, datetime, time, random, collections, dataclasses
+import json, re, time, random, collections, dataclasses
+from datetime import timedelta, datetime
 
 from src.base import Handler
 
@@ -17,6 +18,7 @@ class Contents:
     """
     Contents Unit of Site
     """
+
     html: str
 
 
@@ -25,6 +27,7 @@ class Href:
     """
     element of hrefs in SiteData
     """
+
     url: str
     first: str
     last: str
@@ -34,7 +37,7 @@ class Href:
     score: float
 
     def __eq__(self, other):
-        if not isinstance(other, Href):
+        if not ( isinstance(other, Href) or isinstance(other, SiteData) ):
             return NotImplemented
         return self.url == other.url
 
@@ -61,6 +64,7 @@ class SiteData:
     """
     Data Unit of Site
     """
+
     url: str
     first: str
     last: str
@@ -79,7 +83,7 @@ class SiteData:
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        if not isinstance(other, SiteData):
+        if not ( isinstance(other, SiteData) or isinstance(other, Href) ):
             return NotImplemented
         return self.score < other.score
 
@@ -141,7 +145,7 @@ class Crawler(Handler):
         self._args = args
         self._kwargs = kwargs
         self._init_index()
-        self._init_footprint()
+        #self._init_footprint()
     
     @property
     def domain(self):
@@ -202,9 +206,7 @@ class Crawler(Handler):
                 hrefs = [ Href(**href) for href in data["hrefs"] ],
             )
             for data in index ]
-            print(f"success in loading {self.index_path} and _init_index()")
-            print(self.index_path)
-            print(self.index)
+            print(f"success in loading {self.index_path} and _init_index()\n")
         except Exception as e:
             try:
                 os.makedirs(self.dir_name)
@@ -223,14 +225,13 @@ class Crawler(Handler):
             lp = self._get_lp()
             self.index.append(lp.data)
             self._parent= lp
-            self._target = lp
         else:
             loop = True
             while loop:
                 r = random.randrange(n)
-                data = self.index[r]
+                p_data = self.index[r]
                 try:
-                    contents = self._get_res(data.url).text
+                    p_contents = self._get_res(p_data.url).text
                     break
                 except Timeout as e:
                     print(e)
@@ -241,12 +242,10 @@ class Crawler(Handler):
                 except Exception as e:
                     raise e
 
-            self._parent = Site(data, contents)
-            self._target = Site(data, contents)
+            self._parent = Site(p_data, p_contents)
 
-        # TODO footprintのjsonデータの内容の強化
         self.footprint = [self._parent.data]
-        self._fp_timestamp = str(datetime.datetime.now())
+        self._fp_timestamp = datetime.now().strftime("%Y%m%d:%H:%M:%S")
 
     def _select_target_href(self, algorithm:int = 0):
         """
@@ -274,24 +273,15 @@ class Crawler(Handler):
 
         self._target_href = hrefs[r]
 
-    def _select_data(self):
+    def _select_target_data(self):
         """
         search the target in self.index which has the same url as self._target_href.url
         """
-
-        candidate = [ data for data in self.index if data.url == self._target_href.url ]
-       
-        if len(candidate) < 1:
-            self._data = None
-            self._i = -1
-        elif len(candidate) == 1:
-            i = self.index.index(candidate[0])
+        try:
+            i = self.index.index(self._target_href)
             self._data = self.index[i]
-            self._i = i
-        else:
-            # TODO 一度このExceptionの発生を確認してます
-            raise ValueError("there is some duplication in self.index")
-
+        except ValueError as e:
+            self._data = None
 
     def _update_index(self, interval=5) -> None:
         """
@@ -301,7 +291,7 @@ class Crawler(Handler):
         loop = 0
         while loop < 100:
             self._select_target_href(algorithm=0)
-            self._select_data()
+            self._select_target_data()
             try:
                 time.sleep(interval)
                 res = self._get_res(self._target_href.url)
@@ -449,24 +439,52 @@ class Crawler(Handler):
 
         return data, contents
 
-    def crawling(self, interval=5, max_length=100):
+    def _crawling(
+            self,
+            interval = 5,
+            max_length = 100
+        ):
         """
-        interval is the time(s) to wait to make a next request 
+        1 unit of process for a crawling
         """
-        # TODO loopの終了条件
-        # TODO footprintの初期化
-        # TODO loopの再起判定と再起判定
+
+        # check the length of 1 crawling
+        def cont1():
+            return len(self.footprint) < max_length
+
+        # check if return back to the start position
+        def cont2():
+            if len(self.footprint) == 1:
+                return True
+
+            return self.footprint[0] != self.footprint[-1]
+
+        self._init_footprint()
+
         loop = 0
-        while loop < max_length:
-            print(f"l{loop}:now i\'m in {self._target.data.url}")
+        while cont1() and cont2():
+            print(f"l{loop}:now i\'m in {self._parent.data.url}")
             self._update_index(interval=interval)
             self._update_footprint()
             loop += 1
         else:
             index = [ dataclasses.asdict(data) for data in self.index ]
             footprint = [ dataclasses.asdict(data) for data in self.footprint ]
+
             self._dump_json(index, self.index_path)
-            self._dump_json(footprint, f"tmp/{self._fp_timestamp}.cycle.json")
+            self._dump_json(footprint, f"{self._dir_name}{self._fp_timestamp}.cycle.json")
+
             print(f"finished a walking properly!")
+
+    def crawling(
+            self,
+            interval = 5,
+            max_length = 100,
+            lifetime = timedelta(hours=1)
+        ):
+        till = datetime.now() + lifetime
+
+        while datetime.now() < till:
+            self._crawling(interval=interval, max_length=max_length)
 
 
