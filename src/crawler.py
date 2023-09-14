@@ -4,6 +4,7 @@ Recconaissance Unit
 
 from bs4 import BeautifulSoup as bs4
 import requests
+from requests.exceptions import Timeout
 
 import os, sys
 import json, re, datetime, time, random, collections, dataclasses
@@ -32,6 +33,28 @@ class Href:
     n_passed: int
     score: float
 
+    def __eq__(self, other):
+        if not isinstance(other, Href):
+            return NotImplemented
+        return self.url == other.url
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __lt__(self, other):
+        if not isinstance(other, Href):
+            return NotImplemented
+        return self.score < other.score
+
+    def __le__(self, other):
+        return self.__lt__(other) or self.__eq__(other)
+
+    def __gt__(self, other):
+        return not self.__le__(other)
+
+    def __ge__(self, other):
+        return not self.__lt__(other)
+
 
 @dataclasses.dataclass
 class SiteData:
@@ -45,7 +68,29 @@ class SiteData:
     n_refed: int
     n_visited: int
     score: float
-    hrefs: [Href]
+    hrefs: list[Href]
+
+    def __eq__(self, other):
+        if not isinstance(other, SiteData):
+            return NotImplemented
+        return self.url == other.url
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __lt__(self, other):
+        if not isinstance(other, SiteData):
+            return NotImplemented
+        return self.score < other.score
+
+    def __le__(self, other):
+        return self.__lt__(other) or self.__eq__(other)
+
+    def __gt__(self, other):
+        return not self.__le__(other)
+
+    def __ge__(self, other):
+        return not self.__lt__(other)
 
 
 class Site(Handler):
@@ -60,8 +105,8 @@ class Site(Handler):
         self.contents: Contents = contents
 
     # TODO Siteオブジェクト同士の演算を定義したい。
-    # TODO Href.scoreの評価
-    # TODO 検索対象とのマッチ度としてのSiteData.score
+    # TODO scoreの評価
+    # TODO evalContents(self, searchkeyword)
     def __str__(self):
         return self.data.url
     
@@ -90,7 +135,7 @@ class Crawler(Handler):
     def __init__(self, domain:str = "", *args, **kwargs):
         base_dir = "tmp/"
         self.domain = domain
-        self.dir_name = base_dir + self._hash_name(self._url_encode(domain), extension="")
+        self.dir_name = base_dir + self._hash_name(self._url_encode(domain), extension="/")
         self.file_name = "index.json"
         self.index_path = self.dir_name + self.file_name
         self._args = args
@@ -144,14 +189,27 @@ class Crawler(Handler):
         """
         load or make domain/index.json
         """
-        if os.path.exists(self.index_path):
+        try:
             index = self._load_json(self.index_path)
-            self.index = [ SiteData(**data) for data in index ]
-        else:
+            self.index = [ SiteData(
+                url = data["url"],
+                first = data["first"],
+                last = data["last"],
+                active = data["active"],
+                n_refed = data["n_refed"],
+                n_visited = data["n_visited"],
+                score = data["score"],
+                hrefs = [ Href(**href) for href in data["hrefs"] ],
+            )
+            for data in index ]
+            print(f"success in loading {self.index_path} and _init_index()")
+            print(self.index_path)
+            print(self.index)
+        except Exception as e:
             try:
                 os.makedirs(self.dir_name)
             except Exception as e:
-                print(e)
+                pass
             finally:
                 with open(self.index_path, "w") as f:
                     f.write("")
@@ -193,19 +251,26 @@ class Crawler(Handler):
     def _select_target_href(self, algorithm:int = 0):
         """
         decide self._target_href from self._parent.hrefs with selected algorithm
-        
-        0. definately random
-        1. less-visited one
         """
         hrefs = self._parent.data.hrefs
         n = len(hrefs)
         if n <= 1:
             raise ValueError("couldn't get next_target")
 
-        # TODO case文
-        # TODO 複数の選択アルゴリズムの実装
+        # TODO variaous algorithm
+        # completely random in self._parent.data.hrefs
         if algorithm == 0:
             r = random.randrange(n)
+        # random from the n_passed == 0 ones in self._parent.data.hrefs
+        elif algorithm == 1:
+           yets = [ (i, href) for i, href in enumerate(hrefs) if href.n_passed == 0 ]
+           if len(yets) == 0:
+               r = random.randrange(n)
+           else:
+               q = random.randrange(len(yets))
+               r = yets[q][0]
+        else:
+            pass
 
         self._target_href = hrefs[r]
 
@@ -215,7 +280,7 @@ class Crawler(Handler):
         """
 
         candidate = [ data for data in self.index if data.url == self._target_href.url ]
-        
+       
         if len(candidate) < 1:
             self._data = None
             self._i = -1
@@ -224,48 +289,18 @@ class Crawler(Handler):
             self._data = self.index[i]
             self._i = i
         else:
-            # TODO 一度このExceptionが発生していることを確認
+            # TODO 一度このExceptionの発生を確認してます
             raise ValueError("there is some duplication in self.index")
 
-    """
-    def _make_update(self, interval=5) -> None:
-        loop = 0
-        while loop < 100:
-            self._select_target_href()
-            self._select_data()
-            try:
-                time.sleep(interval)
-                res = self._get_res(self._target_href.url)
-            except Timeout as e:
-                print(e)
-                continue
-            except Exception as e:
-                raise e
-                
-            if res.status_code == 200:
-                break
-            else:
-                self._target_href.active = False
-                if self._data:
-                    self._data.active = False
-                loop += 1
-        else:
-            raise ValueError(f"couldn't success in getting response from {self.domain}")
 
-        return data, contents = self._get_data_and_contents(res)
-
-    def _update_index():
-        pass
-    """
-
-    def _update_target(self, interval=5) -> None:
+    def _update_index(self, interval=5) -> None:
         """
         try to get response from links in self._parent.data.hrefs for up to 100 times
         and update self._target with that response
         """
         loop = 0
         while loop < 100:
-            self._select_target_href()
+            self._select_target_href(algorithm=0)
             self._select_data()
             try:
                 time.sleep(interval)
@@ -274,7 +309,7 @@ class Crawler(Handler):
                 print(e)
                 continue
             except Exception as e:
-                raise e
+                continue
                 
             if res.status_code == 200:
                 break
@@ -286,7 +321,11 @@ class Crawler(Handler):
         else:
             raise ValueError(f"couldn't success in getting response from {self.domain}")
 
-        data, contents = self._get_data_and_contents(res)
+        try:
+            data, contents = self._get_data_and_contents(res)
+        except AttributeError as e:
+            print(res.text)
+            raise e
 
         # update self._parent.data.href[r]
         if self._target_href.last == "yet":
@@ -351,14 +390,14 @@ class Crawler(Handler):
         except Timeout as e:
             raise e
         except Exception as e:
-            raise ValueError(f"Request Failed. Couldn't get from {url}")
+            raise ValueError(f"Request Failed with some reason. Couldn't get from {url}")
         else:
             return res
 
     def _get_soup(self, res):
         try:
             soup = bs4(res.content, "html.parser")
-        except AttributeError as e:
+        except Exception as e:
             raise e
 
         return soup
@@ -367,10 +406,8 @@ class Crawler(Handler):
         a_list = soup.find_all("a")
 
         if len(a_list) > 0:
-            # TODO AttributeErrorの解消
             hrefs = [ a.get("href") for a in a_list if a.get("href").startswith(startswith) ]
         else:
-            print(hrefs)
             raise ValueError(f"couldn't get hrefs from soup!\n")
 
         return hrefs
@@ -378,12 +415,11 @@ class Crawler(Handler):
     def _get_data_and_contents(self, res) -> (SiteData, Contents):
         try:
             soup = self._get_soup(res)
-        except AttributeError as e:
-            raise e
-
-        try:
             hrefs = self._get_hrefs(soup)
-        except ValueError as e:
+        except AttributeError as e:
+            print(res.headers)
+            raise e
+        except Exception as e:
             raise e
 
         hist = collections.Counter(hrefs).most_common()
@@ -423,13 +459,14 @@ class Crawler(Handler):
         loop = 0
         while loop < max_length:
             print(f"l{loop}:now i\'m in {self._target.data.url}")
-            self._update_target(interval=interval)
+            self._update_index(interval=interval)
             self._update_footprint()
             loop += 1
         else:
             index = [ dataclasses.asdict(data) for data in self.index ]
             footprint = [ dataclasses.asdict(data) for data in self.footprint ]
-            self._dump_json(index, f"tmp/test2.json")
+            self._dump_json(index, self.index_path)
             self._dump_json(footprint, f"tmp/{self._fp_timestamp}.cycle.json")
+            print(f"finished a walking properly!")
 
 

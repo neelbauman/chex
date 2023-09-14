@@ -47,6 +47,7 @@ class Node:
 class Link:
     source: str
     target: str
+    val: float
 
 
 def load_json(file_path:str=""):
@@ -64,28 +65,30 @@ def make_input_json(index):
     node_list = [ site["url"] for site in index ]
 
     for i, site in enumerate(index):
-        data["nodes"].append( asdict(Node(id_=site["url"],name=site["url"],val=1.0)) )
+        id_ = site["url"]
+        name = site["url"]
+        val = site["score"] + site["n_visited"]
+
+        node = asdict( Node(id_=id_,name=name,val=val) )
+        data["nodes"].append(node)
+
         for href in site["hrefs"]:
             if href["url"] in node_list:
-                link = asdict(Link(source=site["url"],target=href["url"]))
+                source = site["url"]
+                target = href["url"]
+                val = href["score"] + href["n_passed"]
+
+                link = asdict( Link(source=source,target=target,val=val) )
                 data["links"].append(link)
             else:
                 pass
             
     return data
 
-'''
-@app.get("/")
-def index():
-    with open("tmp/index.json", "r") as f:
-        s = f.read()
-    data = json.loads(s)
-    return data
-'''
 
 @app.get("/")
 def index():
-    file_path = "tmp/001.cycle.json"
+    file_path = "tmp/8b6a9f089f36cbef133e9b29438e6f04579181c4/index.json"
     data = load_json(file_path)
     data = make_input_json(data)
     return data
