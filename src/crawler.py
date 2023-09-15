@@ -233,7 +233,7 @@ class Crawler(Handler):
             self.indexが空でないなら
             """
             fail_list = []
-            while:
+            while True:
                 r = random.randrange(n)
                 if r in fail_list:
                     if len(fail_list) >= n:
@@ -301,15 +301,12 @@ class Crawler(Handler):
                 """
                 raise e
 
-
             self._select_target_data()
             try:
                 time.sleep(interval)
                 res = self._get_res(self._target_href.url)
             except Timeout as e:
-                print(e)
-                continue
-            except Exception as e:
+                loop += 1
                 continue
                 
             if res.status_code == 200:
@@ -319,13 +316,11 @@ class Crawler(Handler):
                 if self._data:
                     self._data.active = False
                 loop += 1
+                continue
         else:
             raise ValueError(f"couldn't success in getting response from {self.domain}")
 
-        try:
-            data, contents = self._get_data_and_contents(res)
-        except AttributeError as e:
-            raise e
+        data, contents = self._get_data_and_contents(res)
 
         # update self._parent.data.href[r]
         if self._target_href.last == "yet":
@@ -362,7 +357,7 @@ class Crawler(Handler):
             except Timeout as e:
                 print(e)
         else:
-            raise ValueError("")
+            raise Exception("")
 
         lp_data, lp_contents = self._get_data_and_contents(res)
         lp = Site(lp_data, lp_contents)
@@ -386,7 +381,7 @@ class Crawler(Handler):
             with open(file_path, "w") as f:
                 json.dump(data, f, indent=4)
         except:
-            raise ValueError(f"some error with dump {data}")
+            raise Exception(f"some error with dump {data}")
 
         return True
 
@@ -399,7 +394,7 @@ class Crawler(Handler):
         params = kwargs if kwargs else None
 
         loop = 0
-        while:
+        while True:
             try:
                 res = requests.get(url, timeout=(3.0,5.0), params=params)
             except Timeout as e:
@@ -415,10 +410,7 @@ class Crawler(Handler):
         return res
 
     def _get_soup(self, res):
-        try:
-            soup = bs4(res.content, "html.parser")
-        except Exception as e:
-            raise e
+        soup = bs4(res.content, "html.parser")
 
         return soup
 
@@ -429,14 +421,8 @@ class Crawler(Handler):
         return hrefs
 
     def _get_data_and_contents(self, res) -> (SiteData, Contents):
-        try:
-            soup = self._get_soup(res)
-            hrefs = self._get_hrefs(soup)
-        except AttributeError as e:
-            print(res.headers)
-            raise e
-        except Exception as e:
-            raise e
+        soup = self._get_soup(res)
+        hrefs = self._get_hrefs(soup)
 
         hist = collections.Counter(hrefs).most_common()
         
