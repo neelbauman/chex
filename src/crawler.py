@@ -222,25 +222,33 @@ class Crawler(Handler):
         """
         n = len(self.index)
         if n == 0:
+            """
+            self.indexが空ならlpを取得して最初の要素にする
+            """
             lp = self._get_lp()
             self.index.append(lp.data)
             self._parent= lp
         else:
-            loop = True
-            while loop:
+            """
+            self.indexが空でないなら
+            """
+            fail_list = []
+            while:
                 r = random.randrange(n)
+                if r in fail_list:
+                    if len(fail_list) >= n:
+                        raise Exception("All url is not valid")
+                    continue
+
                 p_data = self.index[r]
+
                 try:
                     p_contents = self._get_res(p_data.url).text
-                    break
                 except Timeout as e:
-                    print(e)
+                    fail_list.append(r)
                     continue
-                except AttributeError as e:
-                    print(e)
-                    continue
-                except Exception as e:
-                    raise e
+                else:
+                    break
 
             self._parent = Site(p_data, p_contents)
 
@@ -248,19 +256,13 @@ class Crawler(Handler):
         self._fp_timestamp = datetime.now().strftime("%Y%m%d:%H:%M:%S")
 
     def _select_target_href(self, algorithm:int = 0):
-        """
-        decide self._target_href from self._parent.hrefs with selected algorithm
-        """
         hrefs = self._parent.data.hrefs
         n = len(hrefs)
-        if n <= 1:
+        if n < 1:
             raise ValueError("couldn't get next_target")
 
-        # TODO variaous algorithm
-        # completely random in self._parent.data.hrefs
         if algorithm == 0:
             r = random.randrange(n)
-        # random from the n_passed == 0 ones in self._parent.data.hrefs
         elif algorithm == 1:
            yets = [ (i, href) for i, href in enumerate(hrefs) if href.n_passed == 0 ]
            if len(yets) == 0:
@@ -269,28 +271,37 @@ class Crawler(Handler):
                q = random.randrange(len(yets))
                r = yets[q][0]
         else:
-            pass
+            raise ValueError("Please input valid algorithm No.")
 
         self._target_href = hrefs[r]
 
     def _select_target_data(self):
-        """
-        search the target in self.index which has the same url as self._target_href.url
-        """
         try:
+            # check if self._target_href exists in self.index,
+            # and then get the index if exists.
             i = self.index.index(self._target_href)
-            self._data = self.index[i]
         except ValueError as e:
+            # if not exists
             self._data = None
+        else:
+            # if exists
+            self._data = self.index[i]
 
     def _update_index(self, interval=5) -> None:
         """
-        try to get response from links in self._parent.data.hrefs for up to 100 times
-        and update self._target with that response
         """
         loop = 0
         while loop < 100:
-            self._select_target_href(algorithm=0)
+            try:
+                self._select_target_href(algorithm=0)
+            except ValueError as e:
+                """
+                現在のself._parent.data.hrefsが空、つまりどん詰りなので
+                一度初期化してtouringを再起動する。
+                """
+                raise e
+
+
             self._select_target_data()
             try:
                 time.sleep(interval)
@@ -314,7 +325,6 @@ class Crawler(Handler):
         try:
             data, contents = self._get_data_and_contents(res)
         except AttributeError as e:
-            print(res.text)
             raise e
 
         # update self._parent.data.href[r]
@@ -344,7 +354,16 @@ class Crawler(Handler):
         """
         get LP which is a page that is redirected from server root like https://math.jp
         """
-        res = self._get_res(self.domain)
+        loop = 0
+        while loop < 10:
+            try:
+                res = self._get_res(self.domain)
+                break
+            except Timeout as e:
+                print(e)
+        else:
+            raise ValueError("")
+
         lp_data, lp_contents = self._get_data_and_contents(res)
         lp = Site(lp_data, lp_contents)
 
@@ -372,17 +391,28 @@ class Crawler(Handler):
         return True
 
     def _get_res(self, url:str, **kwargs) -> requests.models.Response:
+        """
+        if get returns Timeout, try 10 times anothor.
+        if those failed, then raise Timeout for the first time.
+        """
         url = self._url_encode(url)
         params = kwargs if kwargs else None
 
-        try:
-            res = requests.get(url, timeout=(3.0,5.0), params=params)
-        except Timeout as e:
-            raise e
-        except Exception as e:
-            raise ValueError(f"Request Failed with some reason. Couldn't get from {url}")
-        else:
-            return res
+        loop = 0
+        while:
+            try:
+                res = requests.get(url, timeout=(3.0,5.0), params=params)
+            except Timeout as e:
+                loop += 1
+                if loop < 10:
+                    time.sleep(10)
+                    continue
+                else:
+                    raise e
+            else:
+                break
+
+        return res
 
     def _get_soup(self, res):
         try:
@@ -394,11 +424,7 @@ class Crawler(Handler):
 
     def _get_hrefs(self, soup, startswith="/wiki/"):
         a_list = soup.find_all("a")
-
-        if len(a_list) > 0:
-            hrefs = [ a.get("href") for a in a_list if a.get("href").startswith(startswith) ]
-        else:
-            raise ValueError(f"couldn't get hrefs from soup!\n")
+        hrefs = [ a.get("href") for a in a_list if a.get("href") and a.get("href").startswith(startswith) ]
 
         return hrefs
 
@@ -460,12 +486,21 @@ class Crawler(Handler):
             return self.footprint[0] != self.footprint[-1]
 
         self._init_footprint()
+        print(f"start a touring!")
 
         loop = 0
         while cont1() and cont2():
             print(f"l{loop}:now i\'m in {self._parent.data.url}")
-            self._update_index(interval=interval)
-            self._update_footprint()
+            try: 
+                self._update_index(interval=interval)
+            except ValueError as e:
+                raise e
+
+            try:
+                self._update_footprint()
+            except Exception as e:
+                raise e
+
             loop += 1
         else:
             index = [ dataclasses.asdict(data) for data in self.index ]
@@ -474,7 +509,7 @@ class Crawler(Handler):
             self._dump_json(index, self.index_path)
             self._dump_json(footprint, f"{self._dir_name}{self._fp_timestamp}.cycle.json")
 
-            print(f"finished a walking properly!")
+            print(f"\nfinished a touring properly!")
 
     def touring(
             self,
@@ -485,6 +520,14 @@ class Crawler(Handler):
         till = datetime.now() + lifetime
 
         while datetime.now() < till:
-            self._crawling(interval=interval, max_length=max_length)
+            start = datetime.now()
+            try:
+                self._crawling(interval=interval, max_length=max_length)
+            except ValueError as e:
+                raise e
+
+            end = datetime.now()
+            t = end - start
+            print(f"touring time: {t}\n")
 
 

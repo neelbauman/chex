@@ -75,13 +75,14 @@ def make_input_json(index):
         val = site["score"] + 1
         n_visited = site["n_visited"]
         last = site["last"]
+        neighbors = site["hrefs"]
 
         node = asdict(Node(
             id_ = id_,
             name = name,
             val = val,
             n_visited = n_visited,
-            last = last
+            last = last,
         ))
         data["nodes"].append(node)
 
