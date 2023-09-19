@@ -37,7 +37,7 @@ class Href:
     score: float
 
     def __eq__(self, other):
-        if not ( isinstance(other, Href) or isinstance(other, SiteData) ):
+        if not ( isinstance(other, Href) ):
             return NotImplemented
         return self.url == other.url
 
@@ -75,7 +75,7 @@ class SiteData:
     hrefs: list[Href]
 
     def __eq__(self, other):
-        if not isinstance(other, SiteData):
+        if not ( isinstance(other, SiteData) ):
             return NotImplemented
         return self.url == other.url
 
@@ -276,6 +276,16 @@ class Crawler(Handler):
         self._target_href = hrefs[r]
 
     def _select_target_data(self):
+        cand = [ data for data in self.index if data.url == self._target_href.url ]
+        if len(cand) >= 2:
+            raise ValueError("indexに重複がある")
+        elif len(cand) == 1:
+            self._data = cand[0]
+        else:
+            self._data = None
+            self.index.append(self._data)
+        """
+        # 以下のコードではindexの一意性が担保されなかった。
         try:
             # check if self._target_href exists in self.index,
             # and then get the index if exists.
@@ -286,22 +296,14 @@ class Crawler(Handler):
         else:
             # if exists
             self._data = self.index[i]
+        """
 
     def _update_index(self, interval=5) -> None:
         """
         """
         loop = 0
         while loop < 100:
-            try:
-                self._select_target_href(algorithm=0)
-            except ValueError as e:
-                """
-                現在のself._parent.data.hrefsが空、つまりどん詰りなので
-                一度初期化してtouringを再起動する。
-                """
-                raise e
-
-            self._select_target_data()
+            self._select_target_href(algorithm=0)
             try:
                 time.sleep(interval)
                 res = self._get_res(self._target_href.url)
@@ -322,24 +324,23 @@ class Crawler(Handler):
 
         data, contents = self._get_data_and_contents(res)
 
-        # update self._parent.data.href[r]
+        # update self._target_href
         if self._target_href.last == "yet":
             self._target_href.first = res.headers["Date"]
         self._target_href.active = True
         self._target_href.n_passed += 1
         self._target_href.last = res.headers["Date"]
 
-        # update self.index[i]
+        # update self._data
+        self._select_target_data()
         if self._data:
             self._data.active = True
             self._data.n_visited += 1
             self._data.last = res.headers["Date"]
-            data = self._data
         else:
             self._data = data
-            self.index.append(data)
 
-        self._target = Site(data, contents)
+        self._target = Site(self._data, contents)
 
     def _update_footprint(self) -> None:
         self.footprint.append(self._target.data)
