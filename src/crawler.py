@@ -228,6 +228,7 @@ class Crawler(Handler):
             lp = self._get_lp()
             self.index.append(lp.data)
             self._parent= lp
+            self._data = None
         else:
             """
             self.indexが空でないなら
@@ -251,6 +252,7 @@ class Crawler(Handler):
                     break
 
             self._parent = Site(p_data, p_contents)
+            self._data = None
 
         self.footprint = [self._parent.data]
         self._fp_timestamp = datetime.now().strftime("%Y%m%d:%H:%M:%S")
@@ -278,12 +280,15 @@ class Crawler(Handler):
     def _select_target_data(self):
         cand = [ data for data in self.index if data.url == self._target_href.url ]
         if len(cand) >= 2:
+            print(self._parent.data.url)
+            print(self._target_href.url)
             raise ValueError("indexに重複がある")
         elif len(cand) == 1:
             self._data = cand[0]
+            # cand[0]がNoneを返している可能性
+            # 2重にappendしている可能性
         else:
             self._data = None
-            self.index.append(self._data)
         """
         # 以下のコードではindexの一意性が担保されなかった。
         try:
@@ -333,12 +338,13 @@ class Crawler(Handler):
 
         # update self._data
         self._select_target_data()
-        if self._data:
+        if self._data is not None:
             self._data.active = True
             self._data.n_visited += 1
             self._data.last = res.headers["Date"]
         else:
             self._data = data
+            self.index.append(self._data)
 
         self._target = Site(self._data, contents)
 
