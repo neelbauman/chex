@@ -11,7 +11,7 @@ lp = "/wiki/メインページ"
 target = "/wiki/%E6%B8%AC%E5%BA%A6%E3%81%A8%E7%A9%8D%E5%88%861%EF%BC%9A%E6%B8%AC%E5%BA%A6%E8%AB%96%E3%81%AE%E5%9F%BA%E7%A4%8E%E7%94%A8%E8%AA%9E"
 
 
-class TestCrawler(Handler):
+class TestCrawler():
 
     def test_init(self):
         assert Crawler(domain)

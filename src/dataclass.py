@@ -1,10 +1,11 @@
 import dataclasses
 import datetime
+import re
 import urllib, hashlib
 
 
-class URL:
-    def __init__(self, url: str):
+class URL(str):
+    def __init__(self, url: str = ""):
         self.url = url
 
     def __eq__(self, other):
@@ -16,16 +17,27 @@ class URL:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __lt__(self, other):
+        raise NotImplemented
+
+    def __gt__(self, other):
+        raise NotImplemented
+
+    def __le__(self, other):
+        return not self.__gt__(other)
+
+    def __ge__(self, other):
+        return not self.__lt__(other)
+
     def __str__(self):
         return self.url
 
     def __repr__(self):
-        return self.__str__()
+        return super().__repr__()
 
     @property
     def url(self):
-        return self._url
-
+        return URL(self._url)
     @url.setter
     def url(self, value):
         decoded = urllib.parse.unquote(value)
@@ -36,25 +48,35 @@ class URL:
 
     @property
     def encoded(self):
-        return urllib.parse.quote(self._url, safe=":/%")
-
-    @property
-    def decoded(self):
-        return urllib.parse.unquote(self._url)
+        url = urllib.parse.quote(self._url, safe=":/%")
+        return URL(url)
 
     @property
     def hashed(self):
         return hashlib.sha1(self._url.encode("utf-8")).hexdigest()
 
+    @property
+    def domain(self):
+        match = re.search(r"([a-zA-Z0-9-]*[a-zA-Z0-9]*\.)+[a-zA-Z]{2,}/", self.url)
+        domain = match.group()
 
-@dataclasses.dataclass
+        return URL(domain)
+
+    @property
+    def protocol(self):
+        match = re.search(r"^https?://", self.url)
+        protocol = match.group()
+
+        return URL(protocol)
+
+
 class Contents:
     """
     Contents Unit of Site
     """
 
-    html: str | None
-    contents: bytes | None
+    def __init__(self, html):
+        self.html = html
 
 
 @dataclasses.dataclass
@@ -65,6 +87,7 @@ class Href:
 
     source: URL
     target: URL
+    weight: int
     firstPass: datetime.datetime
     lastPass: datetime.datetime
     passNumber: int
@@ -84,7 +107,6 @@ class Site:
     visitNumber: int
     isActive: bool
     score: float
-    contents: Contents
+    contents: str
     hrefs: list[Href]
-
 
