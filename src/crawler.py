@@ -278,7 +278,9 @@ class Crawler(Handler):
         self._target_href = hrefs[r]
 
     def _select_target_data(self):
+
         cand = [ data for data in self.index if data.url == self._target_href.url ]
+
         if len(cand) >= 2:
             print(self._parent.data.url)
             print(self._target_href.url)
@@ -289,6 +291,10 @@ class Crawler(Handler):
             # 2重にappendしている可能性
         else:
             self._data = None
+
+# 実行順が前後しているかもしれない？
+# 非同期になっている箇所（request?）
+
         """
         # 以下のコードではindexの一意性が担保されなかった。
         try:
