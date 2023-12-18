@@ -2,142 +2,22 @@
 Recconaissance Unit
 """
 
-from bs4 import BeautifulSoup as bs4
 import requests
 from requests.exceptions import Timeout
+from bs4 import BeautifulSoup as bs4
 
 import os, sys
 import json, re, time, random, collections, dataclasses
 from datetime import timedelta, datetime
-
-from src.base import Handler
-
-
-@dataclasses.dataclass
-class Contents:
-    """
-    Contents Unit of Site
-    """
-
-    html: str
-
-
-@dataclasses.dataclass
-class Href:
-    """
-    element of hrefs in SiteData
-    """
-
-    url: str
-    first: str
-    last: str
-    active: bool
-    n_ref: int
-    n_passed: int
-    score: float
-
-    def __eq__(self, other):
-        if not ( isinstance(other, Href) ):
-            return NotImplemented
-        return self.url == other.url
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __lt__(self, other):
-        if not isinstance(other, Href):
-            return NotImplemented
-        return self.score < other.score
-
-    def __le__(self, other):
-        return self.__lt__(other) or self.__eq__(other)
-
-    def __gt__(self, other):
-        return not self.__le__(other)
-
-    def __ge__(self, other):
-        return not self.__lt__(other)
-
-
-@dataclasses.dataclass
-class SiteData:
-    """
-    Data Unit of Site
-    """
-
-    url: str
-    first: str
-    last: str
-    active: bool
-    n_refed: int
-    n_visited: int
-    score: float
-    hrefs: list[Href]
-
-    def __eq__(self, other):
-        if not ( isinstance(other, SiteData) ):
-            return NotImplemented
-        return self.url == other.url
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __lt__(self, other):
-        if not ( isinstance(other, SiteData) or isinstance(other, Href) ):
-            return NotImplemented
-        return self.score < other.score
-
-    def __le__(self, other):
-        return self.__lt__(other) or self.__eq__(other)
-
-    def __gt__(self, other):
-        return not self.__le__(other)
-
-    def __ge__(self, other):
-        return not self.__lt__(other)
-
-
-class Site(Handler):
-    """
-    SiteData & Contents Unit
-
-    """
-    def __init__(self, data: SiteData, contents: Contents, *args, **kwargs) -> None:
-        self._kwargs = kwargs
-        self._args = args
-        self.data: SiteData = data
-        self.contents: Contents = contents
-
-    # TODO Siteオブジェクト同士の演算を定義したい。
-    # TODO scoreの評価
-    # TODO evalContents(self, searchkeyword)
-    def __str__(self):
-        return self.data.url
-    
-    def __repr__(self):
-        return self.__str__()
-
-    @property
-    def data(self):
-        return self._data
-    @data.setter
-    def data(self, value):
-        self._data = value
-
-    @property
-    def contents(self):
-        return self._contents
-    @contents.setter
-    def contents(self, value):
-        self._contetns = value
 
 
 class Crawler(Handler):
     """
     Survey Unit
     """
+    base_dir = "tmp/"
+
     def __init__(self, domain:str = "", *args, **kwargs):
-        base_dir = "tmp/"
         self.domain = domain
         self.dir_name = base_dir + self._hash_name(self._url_encode(domain), extension="/")
         self.file_name = "index.json"
