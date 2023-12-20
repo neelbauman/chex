@@ -2,134 +2,164 @@
 Recconaissance Unit
 """
 
+import networkx as nx
 import requests
 from requests.exceptions import Timeout
 from requests.models import Response
-
 from bs4 import BeautifulSoup as bs4
 
-import os, sys
+import os
 import json
 import re
 import time
 import random
 import collections
-import urllib, hashlib
+import urllib
+import hashlib
 from datetime import timedelta, datetime
 
 from dataclass import URL, Href, Contents, Site
+from datatype.darray import queue, stack
 
 
-class IndexData():
+Attr = collections.namedtuple("Attr", "key value")
+Edge = collections.namedtuple("Edge", "source target attr")
+
+
+
+class Index():
     def __init__(
         self,
-        filepath: str | None = None,
+        filepath: str = "",
     ):
         self.filepath = filepath
 
         try:
-            self.loadJson()
+            self.G = self.readEdgelist(filepath)
         except:
-            self.json = []
-            self.dumpJson()
+            self.G = nx.DiGraph()
+            self.writeEdgelist(filepath)
 
     @property
-    def filepath(self):
+    def filepath(self) -> str:
         return self._filepath
     @filepath.setter
     def filepath(self, value: str):
-        self._filepath = value
+        self._filepath = os.path.normpath(value)
 
     @property
-    def dirname(self):
-        if self.filepath:
-            return os.path.dirname(self.filepath)
+    def dirname(self) -> str:
+        try:
+            dirname = os.path.dirname(self.filepath)
+        except Exception as e:
+            raise ValueError(f"Invalid Filepath: {self.filepath}")
         else:
-            return None
+            return dirname
 
     @property
-    def filename(self):
-        if self.filepath:
-            return os.path.basename(self.filepath)
+    def filename(self) -> str:
+        try:
+            filename = os.path.basename(self.filepath)
+        except Exception as e:
+            raise ValueError(f"Invalid Filepath: {self.filepath}")
         else:
-            return None
+            return filename
         
-    def loadJson(self, filepath: str | None = None):
+    def readEdgelist(self, filepath: str = ""):
         path = filepath if filepath else self.filepath
-        with open(path, "r") as f:
-            s = f.read()
+        _, ext = os.path.splitext(path)
 
-        data = json.loads(s)
-        self.json = data
+        if ext == ".csv":
+            delimiter = ","
+        elif ext == ".tsv":
+            delimiter = "\t"
+        else:
+            delimiter = None
 
-    def dumpJson(self, filepath: str | None = None):
+        self.G = nx.read_edgelist(
+            path = path,
+            comments = '#',
+            delimiter = delimiter,
+            create_using = nx.DiGraph,
+            data = (
+                Attr("weight", int),
+                Attr("score", float),
+                Attr("isActive", bool),
+                Attr("timestamp", datetime.datetime),
+            ),
+            encoding = 'utf-8',
+        )
+
+    def readWeightedEdgelist(self):
+
+        G = nx.read_weighted_edgelist(
+            path = path,
+            comments = '#',
+            delimiter = delimiter,
+            create_using = nx.DiGraph,
+            nodetype = None,
+            encoding='utf-8',
+        )
+
+    def writeEdgelist(self, filepath: str = ""):
+        path = filepath if filepath else self.filepath
+        _, ext = os.path.splitext(path)
+
+        if ext == ".csv":
+            delimiter = ","
+        elif ext == ".tsv":
+            delimiter = "\t"
+        else:
+            delimiter = " "
+
+        try:
+            os.makedirs(self.dirname)
+        except Exception as e:
+            pass
+        finally:
+            nx.write_edgelist(
+                G = self.G,
+                path = path,
+                comments = '#',
+                delimiter = delimiter,
+                data = True,
+                encoding = 'utf-8',
+            )
+
+
+    def readJson(self, filepath: str = ""):
+        path = filepath if filepath else self.filepath
+        try:
+            with open(path, "r") as f:
+                s = f.read()
+                data = json.loads(s)
+        except Exception as e:
+            raise e 
+        else:
+            return data
+
+    def writeJson(self, filepath: str = ""):
         path = filepath if filepath else self.filepath
         try:
             os.makedirs(self.dirname)
         except Exception as e:
             pass
         finally:
-            with open(filepath, "w") as f:
+            with open(path, "w") as f:
                 json.dump(self.json, f, indent=4)
 
-    def _update_index(self, interval=5) -> None:
-        """
-        """
-        loop = 0
-        while loop < 100:
-            self._select_target_href(algorithm=0)
-            try:
-                time.sleep(interval)
-                res = self._get_res(self._target_href.url)
-            except Timeout as e:
-                loop += 1
-                continue
-                
-            if res.status_code == 200:
-                break
-            else:
-                self._target_href.active = False
-                if self._data:
-                    self._data.active = False
-                loop += 1
-                continue
-        else:
-            raise ValueError(f"couldn't success in getting response from {self.domain}")
 
-        data, contents = self._get_data_and_contents(res)
+class Controller():
+    def __init__(self, *args, **kwargs):
+        self.footprint = []
+        self.waitlist = []
 
-        # update self._target_href
-        if self._target_href.last == "yet":
-            self._target_href.first = res.headers["Date"]
-        self._target_href.active = True
-        self._target_href.n_passed += 1
-        self._target_href.last = res.headers["Date"]
+    def update_waitlist(self, hrefs: [Href]) -> None:
+        self.waitlist = [*self.waitlist, *hrefs]
 
-        # update self._data
-        self._select_target_data()
-        if self._data is not None:
-            self._data.active = True
-            self._data.n_visited += 1
-            self._data.last = res.headers["Date"]
-        else:
-            self._data = data
-            self.index.append(self._data)
+    def get_next(self) -> Href:
+        return self.waitlist.pop()
 
-        self._target = Site(self._data, contents)
-
-
-class Footprint():
-    def __init__(self, res = None, *args, **kwargs):
-        self.hist = []
-        if res:
-            self.add(res)
-
-    def add(self, res):
-        self.hist = [*self.hist, *res if type(res) is list else res ]
-
-    def _update_footprint(self) -> None:
-        self.footprint.append(self._target.data)
-        self._parent = self._target
 
 
 class Crawler():
@@ -140,24 +170,19 @@ class Crawler():
 
     def __init__(
         self,
-        url: str | None = None,
-        domain: str | None = None,
-        filename: str = "index.json"
-        *args,
-        **kwargs
+        domain: str = "",
+        url: str = "",
+        filename: str = "index.csv",
     ):
         if url:
-            self.url = URL(url).decoded
-            self.domain = self.url.domain.decoded
+            self.domain = URL(url).domain
         elif domain:
-            res = self._get_res(domain)
-            self.domain = URL(domain).decoded
-            self.url = URL(res.url).decoded
+            self.domain = URL(domain)
         else:
             raise NotImplemented
 
         self._init_index(filename)
-        self._init_footprint()
+        self._init_controller(url)
     
     @property
     def domain(self):
@@ -166,85 +191,26 @@ class Crawler():
     def domain(self, value):
         self._domain = value
 
-    @property
-    def index(self):
-        return self._index
-    @index.setter
-    def index(self, value):
-        self._index = value
-
-    @property
-    def footprint(self):
-        return self._footprint
-    @footprint.setter
-    def footprint(self, value):
-        self._footprint = value
-
-
     def _init_index(self, filename):
         indexpath = os.path.join(self.base_dir, self.domain.hashed, filename)
-        self.index = IndexData(indexpath)
+        self.index = Index(indexpath)
 
-    def _init_footprint(self):
-        r = random.randrange(len(self.index.json))
+    def _init_controller(self, url):
+        self.controller = Controller()
 
-        if r == 0:
-            res = self._get_res(self.url.encoded)
+        if url:
+            res = self.get_res(URL(url))
         else:
-            res = self._get_res(self.index.json[r].url.encoded)
+            res = self.get_res(self.domain)
 
-        self.footprint = Footprint(res)
+        hrefs = self._get_hrefs(res)
 
-    def _select_target_href(self, algorithm:int = 0):
-        hrefs = self._parent.hrefs
-        n = len(hrefs)
-        if n < 1:
-            raise ValueError("couldn't get next_target")
+        self.controller.update_waitlist(hrefs)
 
-        if algorithm == 0:
-            r = random.randrange(n)
-        elif algorithm == 1:
-           yets = [ (i, href) for i, href in enumerate(hrefs) if href.n_passed == 0 ]
-           if len(yets) == 0:
-               r = random.randrange(n)
-           else:
-               q = random.randrange(len(yets))
-               r = yets[q][0]
-        else:
-            raise ValueError("Please input valid algorithm No.")
-
-        self._target_href = hrefs[r]
-
-    def _select_target_data(self):
-        cand = [ data for data in self.index if data.url == self._target_href.url ]
-        if len(cand) >= 2:
-            print(self._parent.data.url)
-            print(self._target_href.url)
-            raise ValueError("indexに重複がある")
-        elif len(cand) == 1:
-            self._data = cand[0]
-            # cand[0]がNoneを返している可能性
-            # 2重にappendしている可能性
-        else:
-            self._data = None
+    def get_res(self, url: URL, n_try: int = 10, **kwargs) -> Response | None:
         """
-        # 以下のコードではindexの一意性が担保されなかった。
-        try:
-            # check if self._target_href exists in self.index,
-            # and then get the index if exists.
-            i = self.index.index(self._target_href)
-        except ValueError as e:
-            # if not exists
-            self._data = None
-        else:
-            # if exists
-            self._data = self.index[i]
-        """
-
-    def _get_res(self, url: URL, n_try: int = 10, **kwargs) -> requests.models.Response | None:
-        """
-        if get returns Timeout, try 10 times anothor.
-        if those failed, then raise Timeout for the first time.
+        if requests.get raises Timeout Exception, try 10 times anothor.
+        if those are failed, then return None.
         """
         url = url.encoded
         params = kwargs if kwargs else None
@@ -254,6 +220,7 @@ class Crawler():
                 res = requests.get(url, timeout=(3.0,5.0), params=params)
             except Timeout as e:
                 time.sleep(5)
+                loop += 1
                 continue
             else:
                 break
@@ -262,83 +229,68 @@ class Crawler():
 
         return res
 
-    def _get_soup(self, res):
-        soup = bs4(res.content, "html.parser")
-
+    def _get_soup(self, res, parser: str = "html.parser"):
+        soup = bs4(res.content, parser)
         return soup
 
-    def _get_hrefs(self, soup, startswith="/wiki/"):
+    def _get_hrefs(self, res, startswith="/"):
+        soup = self._get_soup(res)
         a_list = soup.find_all("a")
-        hrefs = [ a.get("href") for a in a_list if a.get("href") and a.get("href").startswith(startswith) ]
+        targets = [
+            a.get("href") for a in a_list
+            if a.get("href") and a.get("href").startswith(startswith)
+        ]
+        
+        hrefs = [ Href(
+            source = URL(res.url),
+            target = URL(target),
+            weight = 1,
+            score = 0.0,
+            isActive = False,
+        ) for target in targets ]
 
         return hrefs
 
-    def _get_site(self, url: URL):
-        res = self._get_res(url)
-        soup = self._get_soup(res)
-        hrefs = self._get_hrefs(soup)
-        hist = collections.Counter(hrefs).most_common()
-        
-        hrefs = [ Href(
-            source = url,
-            target = URL(url.domain+href[0]),
-            weight = href[1],
-            firstPass = "yet",
-            lastPass = "yet",
-            passNumber= 0,
-            isActive = True,
-            score = 0.0
-        ) for href in hist ]
+    def _get_next(self):
+        return self.controller.get_next()
 
-        site = Site(
-            url = url
-            firstVisit = res.headers["Date"],
-            lastVisit = res.headers["Date"],
-            visitNumber = 1,
-            isActive = True,
-            score = 0.0,
-            contents = hashlib.sha1(res.text.encode("utf-8")).hexdigest()
-            hrefs = hrefs
-        )
-
-        return site
-
-    def _crawling(
-            self,
-            interval = 5,
-            max_length = 100
-        ):
+    def update(self):
         """
-        1 unit of process for a crawling
         """
+        href = self._get_next()
+        res = self.get_res(href.target)
 
-        # check the length of 1 crawling
-        def cont1():
-            return len(self.footprint) < max_length
+        if res is None:
+            href.deactivate()
+            status = -1
+        else:
+            href.activate()
+            status = 1
 
-        # check if return back to the start position
-        def cont2():
-            if len(self.footprint) == 1:
-                return True
+        # targetが未到達の場合のみ、
+        # targetから伸びるhrefsをwaitlistに追加
+        if not href.target in self.index.G.nodes:
+            new_hrefs = self._get_hrefs(res)
+            self.controller.update_waitlist(new_hrefs)
 
-            return self.footprint[0] != self.footprint[-1]
+        self.index.G.add_edge(href.source, href.target, href.attr_dict)
 
-        self._init_footprint()
-        print(f"start a touring!")
+        return href, status
+
+    def crawl(
+        self,
+        interval = 5,
+        max_length = 100,
+    ):
+        """
+        ## waitlistが空になるまでself.update()し続ける
+        """
+        print(f"Start Crawling!")
 
         loop = 0
-        while cont1() and cont2():
-            print(f"l{loop}:now i\'m in {self._parent.data.url}")
-            try: 
-                self._update_index(interval=interval)
-            except ValueError as e:
-                raise e
-
-            try:
-                self._update_footprint()
-            except Exception as e:
-                raise e
-
+        while not self.controller.waitlist.isEmpty:
+            DONE = self.update()
+            print(f"l{loop}: from {DONE.source} to {DONE.target}")
             loop += 1
         else:
             index = [ dataclasses.asdict(data) for data in self.index ]
@@ -348,24 +300,4 @@ class Crawler():
             self._dump_json(footprint, f"{self._dirname}{self._fp_timestamp}.cycle.json")
 
             print(f"\nfinished a touring properly!")
-
-    def touring(
-            self,
-            interval = 5,
-            max_length = 100,
-            lifetime = timedelta(hours=1)
-        ):
-        till = datetime.now() + lifetime
-
-        while datetime.now() < till:
-            start = datetime.now()
-            try:
-                self._crawling(interval=interval, max_length=max_length)
-            except ValueError as e:
-                raise e
-
-            end = datetime.now()
-            t = end - start
-            print(f"touring time: {t}\n")
-
 

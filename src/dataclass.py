@@ -37,7 +37,7 @@ class URL(str):
 
     @property
     def url(self):
-        return URL(self._url)
+        return self._url
     @url.setter
     def url(self, value):
         decoded = urllib.parse.unquote(value)
@@ -50,10 +50,6 @@ class URL(str):
     def encoded(self):
         url = urllib.parse.quote(self._url, safe=":/%")
         return URL(url)
-
-    @property
-    def hashed(self):
-        return hashlib.sha1(self._url.encode("utf-8")).hexdigest()
 
     @property
     def domain(self):
@@ -69,6 +65,10 @@ class URL(str):
 
         return URL(protocol)
 
+    @property
+    def hashed(self) -> str:
+        return hashlib.sha1(self._url.encode("utf-8")).hexdigest()
+
 
 class Contents:
     """
@@ -82,17 +82,45 @@ class Contents:
 @dataclasses.dataclass
 class Href:
     """
-    element of hrefs in SiteData
+    response to Edge of index.G
     """
 
     source: URL
     target: URL
-    weight: int
-    firstPass: datetime.datetime
-    lastPass: datetime.datetime
-    passNumber: int
-    isActive: bool
-    score: float
+    weight: int = 1
+    score: float = 0.0
+    isActive: bool = False
+    timestamp: datetime.datetime | None = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        """
+        init時、activeならinit時の時刻をtimestampとする。
+        not activeならtimestampはNone。
+        """
+        if self.isActive:
+            self.timestamp = datetime.datetime.now()
+        else:
+            self.timestamp = None
+
+    @property
+    def attr_dict(self):
+        return {
+            "weight": self.weight,
+            "score": self.score,
+            "isActive": self.isActive,
+            "timestamp": self.timestamp,
+        }
+
+    def asEdge(self):
+        return (self.source, self.target, self.attrs(),)
+
+    def activate(self):
+        self.timestamp = datetime.datetime.now()
+        self.isActive = True
+
+    def deactivate(self):
+        self.timestamp = datetime.datetime.now()
+        self.isActive = False
 
 
 @dataclasses.dataclass
