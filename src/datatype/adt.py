@@ -1,5 +1,6 @@
 from collections import deque
 
+
 class queue(deque):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -11,8 +12,9 @@ class queue(deque):
         return super().pop()
 
     def isEmpty(self):
-        return True if len(self) == 0 else False
+        return len(self) == 0
     
+
 class stack(deque):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,4 +26,4 @@ class stack(deque):
         return super().pop()
 
     def isEmpty(self):
-        return True if len(self) == 0 else False
+        return len(self) == 0

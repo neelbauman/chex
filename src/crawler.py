@@ -1,218 +1,103 @@
 """
-Recconaissance Unit
+requests, bs4への依存はここに局所化する
 """
-
-import networkx as nx
 import requests
 from requests.exceptions import Timeout
 from requests.models import Response
 from bs4 import BeautifulSoup as bs4
 
-import os
-import json
 import re
 import time
-import random
-import collections
-import urllib
-import hashlib
-from datetime import timedelta, datetime
+from urllib.parse import ParseResult, urlparse
 
-from dataclass import URL, Href, Contents, Site
-from datatype.darray import queue, stack
+from src.datatype.collections import urlparts
+from src.datatype.web import Site, Href
 
-
-Attr = collections.namedtuple("Attr", "key value")
-Edge = collections.namedtuple("Edge", "source target attr")
-
-
-
-class Index():
+class HrefScreener:
+    """
+    """
     def __init__(
         self,
-        filepath: str = "",
+        format_tpl: urlparts,
+        *condition_tpls: (urlparts),
     ):
-        self.filepath = filepath
+        self._condition_tpls= tuple(ParseResult(*tpl) for tpl in condition_tpls)
+        self._format_tpl = ParseResult(*format_tpl)
 
-        try:
-            self.G = self.readEdgelist(filepath)
-        except:
-            self.G = nx.DiGraph()
-            self.writeEdgelist(filepath)
+    def __eq__(self, other):
+        return self is other
 
-    @property
-    def filepath(self) -> str:
-        return self._filepath
-    @filepath.setter
-    def filepath(self, value: str):
-        self._filepath = os.path.normpath(value)
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-    @property
-    def dirname(self) -> str:
-        try:
-            dirname = os.path.dirname(self.filepath)
-        except Exception as e:
-            raise ValueError(f"Invalid Filepath: {self.filepath}")
+    def __lt__(self, other):
+        raise NotImplemented
+
+    def __gt__(self, other):
+        raise NotImplemented
+
+    def __le__(self, other):
+        return not self.__gt__(other)
+
+    def __ge__(self, other):
+        return not self.__lt__(other)
+
+    def __str__(self):
+        return super().__str__()
+
+    def __repr__(self):
+        return super().__repr__()
+
+    def __call__(self, url: str):
+        result = self._convert(url)
+        return result
+
+    def check(self, url: str) -> (bool, ParseResult):
+        """
+        """
+        parsed_tpl = urlparse(url)
+
+        for cnd_tpl in self._condition_tpls:
+            result = all( bool(re.fullmatch(cnd_part, url_part)) for cnd_part, url_part in zip(cnd_tpl, parsed_tpl) )
+            if result:
+                break
+            else:
+                continue
         else:
-            return dirname
+            return False, parsed_tpl
 
-    @property
-    def filename(self) -> str:
-        try:
-            filename = os.path.basename(self.filepath)
-        except Exception as e:
-            raise ValueError(f"Invalid Filepath: {self.filepath}")
+        return True, parsed_tpl
+
+    def _convert(self, url: str):
+        result, parsed = self.check(url)
+
+        if result:
+            for key, fmt_part in self._format_tpl._asdict().items():
+                if fmt_part is not None:
+                    parsed = parsed._replace(**{key: fmt_part})
+                else:
+                    pass
+            return parsed.geturl()
         else:
-            return filename
-        
-    def readEdgelist(self, filepath: str = ""):
-        path = filepath if filepath else self.filepath
-        _, ext = os.path.splitext(path)
-
-        if ext == ".csv":
-            delimiter = ","
-        elif ext == ".tsv":
-            delimiter = "\t"
-        else:
-            delimiter = None
-
-        self.G = nx.read_edgelist(
-            path = path,
-            comments = '#',
-            delimiter = delimiter,
-            create_using = nx.DiGraph,
-            data = (
-                Attr("weight", int),
-                Attr("score", float),
-                Attr("isActive", bool),
-                Attr("timestamp", datetime.datetime),
-            ),
-            encoding = 'utf-8',
-        )
-
-    def readWeightedEdgelist(self):
-
-        G = nx.read_weighted_edgelist(
-            path = path,
-            comments = '#',
-            delimiter = delimiter,
-            create_using = nx.DiGraph,
-            nodetype = None,
-            encoding='utf-8',
-        )
-
-    def writeEdgelist(self, filepath: str = ""):
-        path = filepath if filepath else self.filepath
-        _, ext = os.path.splitext(path)
-
-        if ext == ".csv":
-            delimiter = ","
-        elif ext == ".tsv":
-            delimiter = "\t"
-        else:
-            delimiter = " "
-
-        try:
-            os.makedirs(self.dirname)
-        except Exception as e:
-            pass
-        finally:
-            nx.write_edgelist(
-                G = self.G,
-                path = path,
-                comments = '#',
-                delimiter = delimiter,
-                data = True,
-                encoding = 'utf-8',
-            )
-
-
-    def readJson(self, filepath: str = ""):
-        path = filepath if filepath else self.filepath
-        try:
-            with open(path, "r") as f:
-                s = f.read()
-                data = json.loads(s)
-        except Exception as e:
-            raise e 
-        else:
-            return data
-
-    def writeJson(self, filepath: str = ""):
-        path = filepath if filepath else self.filepath
-        try:
-            os.makedirs(self.dirname)
-        except Exception as e:
-            pass
-        finally:
-            with open(path, "w") as f:
-                json.dump(self.json, f, indent=4)
-
-
-class Controller():
-    def __init__(self, *args, **kwargs):
-        self.footprint = []
-        self.waitlist = []
-
-    def update_waitlist(self, hrefs: [Href]) -> None:
-        self.waitlist = [*self.waitlist, *hrefs]
-
-    def get_next(self) -> Href:
-        return self.waitlist.pop()
-
+            return False
 
 
 class Crawler():
     """
-    Survey Unit
     """
-    base_dir = "tmp"
 
     def __init__(
         self,
-        domain: str = "",
-        url: str = "",
-        filename: str = "index.csv",
+        screen: HrefScreener,
     ):
-        if url:
-            self.domain = URL(url).domain
-        elif domain:
-            self.domain = URL(domain)
-        else:
-            raise NotImplemented
+        self.screen = screen
 
-        self._init_index(filename)
-        self._init_controller(url)
-    
-    @property
-    def domain(self):
-        return self._domain
-    @domain.setter
-    def domain(self, value):
-        self._domain = value
-
-    def _init_index(self, filename):
-        indexpath = os.path.join(self.base_dir, self.domain.hashed, filename)
-        self.index = Index(indexpath)
-
-    def _init_controller(self, url):
-        self.controller = Controller()
-
-        if url:
-            res = self.get_res(URL(url))
-        else:
-            res = self.get_res(self.domain)
-
-        hrefs = self._get_hrefs(res)
-
-        self.controller.update_waitlist(hrefs)
-
-    def get_res(self, url: URL, n_try: int = 10, **kwargs) -> Response | None:
+    def get_res(self, url: str, n_try: int = 10, **kwargs) -> Response | None:
         """
         if requests.get raises Timeout Exception, try 10 times anothor.
         if those are failed, then return None.
         """
-        url = url.encoded
+        url = url
         params = kwargs if kwargs else None
 
         for loop in range(n_try):
@@ -233,71 +118,76 @@ class Crawler():
         soup = bs4(res.content, parser)
         return soup
 
-    def _get_hrefs(self, res, startswith="/"):
+    def step_next(self):
+        """
+        """
+        href: Href = self.handler.pop_next()
+        res: Response = self.get_res(href.target.url)
+
+        if res:
+            href.target.activate()
+            href.activate()
+        else:
+            href.target.deactivate()
+            href.deactivate()
+
         soup = self._get_soup(res)
         a_list = soup.find_all("a")
-        targets = [
-            a.get("href") for a in a_list
-            if a.get("href") and a.get("href").startswith(startswith)
-        ]
+
+        # 一回目のフィルタ
+        link_list = [ a.get("href") for a in a_list if a.get("href") ]
+
+        # 二回目のフィルタ
+        url_list = [ self.screen(url) for url in link_list ]
         
+        # 三回目のフィルタ
         hrefs = [ Href(
-            source = URL(res.url),
-            target = URL(target),
+            source = href.target,
+            target = Site(url),
             weight = 1,
             score = 0.0,
             isActive = False,
-        ) for target in targets ]
+        ) for url in url_list if url]
 
-        return hrefs
+        self.handler.update(href, hrefs)
 
-    def _get_next(self):
-        return self.controller.get_next()
+        return href
 
-    def update(self):
-        """
-        """
-        href = self._get_next()
-        res = self.get_res(href.target)
+    def sleep(self, interval: int):
+        time.sleep(interval)
+        return True
 
-        if res is None:
-            href.deactivate()
-            status = -1
-        else:
-            href.activate()
-            status = 1
-
-        # targetが未到達の場合のみ、
-        # targetから伸びるhrefsをwaitlistに追加
-        if not href.target in self.index.G.nodes:
-            new_hrefs = self._get_hrefs(res)
-            self.controller.update_waitlist(new_hrefs)
-
-        self.index.G.add_edge(href.source, href.target, href.attr_dict)
-
-        return href, status
-
-    def crawl(
+    def start(
         self,
-        interval = 5,
-        max_length = 100,
+        interval:int = 5,
+        epoch:int = 1,
+        epoch_length: int|None = None,
     ):
         """
-        ## waitlistが空になるまでself.update()し続ける
+        handler.waitlistが空になるまでstep_nextし続ける。
         """
         print(f"Start Crawling!")
-
-        loop = 0
-        while not self.controller.waitlist.isEmpty:
-            DONE = self.update()
-            print(f"l{loop}: from {DONE.source} to {DONE.target}")
-            loop += 1
+        count = 1
+        for i in range(epoch):
+            print(f"===Epoch{i}===")
+            loop = 0
+            while ( not self.handler.isFinished ) and self.sleep(interval):
+                DONE = self.step_next()
+                print(f"l{loop}: QUEUE:{len(self.handler.waitlist)} {DONE}, isActive:{DONE.isActive}")
+                #print(f"l{loop}: QUEUE:{len(self.handler.waitlist)}")
+                count += 1
+                loop += 1
+                if epoch_length and loop > epoch_length-1:
+                    self.handler.inventory.write()
+                    print(f"===\nMax Length. Epoch{i} Finish.\n===")
+                    break
+            else:
+                self.handler.inventory.write()
+                print(f"\nFinish Crawling at Epoch{i}!")
+                break
         else:
-            index = [ dataclasses.asdict(data) for data in self.index ]
-            footprint = [ dataclasses.asdict(data) for data in self.footprint ]
-
-            self._dump_json(index, self.index_path)
-            self._dump_json(footprint, f"{self._dirname}{self._fp_timestamp}.cycle.json")
-
-            print(f"\nfinished a touring properly!")
-
+            self.handler.inventory.write()
+            print(f"\nAll Epochs Finished! But QUEUE is Not Still Empty.")
+        
+        print("===Summary===")
+        print(f"request:{count}, nodes:{len(self.handler.inventory.nodes)}, edges:{len(self.handler.inventory.edges)}")
